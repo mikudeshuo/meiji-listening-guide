@@ -14,6 +14,7 @@ import {
 } from '../../shared/video-ppt';
 import type { SubtitleSyncTask } from '../../shared/subtitle-sync';
 import type { LibraryFile } from '../../shared/types';
+import { invoke } from './ipc';
 type BiliSubtitle = {
   title: string;
   page: number;
@@ -23,7 +24,6 @@ type BiliSubtitle = {
   count: number;
   savedPath?: string;
 };
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
 const time = (s: number) =>
   `${Math.floor(s / 3600) ? Math.floor(s / 3600) + ':' : ''}${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(Math.floor(s) % 60).padStart(2, '0')}`;
 export function VideoPpt({

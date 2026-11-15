@@ -1,4 +1,3 @@
-import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { NativeResearchStore } from './research-store';
 import { NativeResearchSources, type ResearchSource } from './research-sources';
@@ -12,8 +11,8 @@ import {
   type ExternalEvidence,
 } from './research-external';
 import { NativeResearchFulltext, type FulltextChoice } from './research-fulltext';
+import { hexId, sha256 } from './digest';
 const op = z.string().regex(/^[a-f0-9]{32}$/);
-const hash = (text: string) => createHash('sha256').update(text).digest('hex');
 export type NativeResearchTask = {
   task_id: string;
   question: string;
@@ -197,7 +196,7 @@ export class NativeResearchEngine {
       this.sources.verify(materials);
       const now = new Date().toISOString(),
         task: NativeResearchTask = {
-          task_id: randomUUID().replaceAll('-', ''),
+          task_id: hexId(),
           question: request.question,
           status: 'paused',
           note: '',
@@ -410,7 +409,7 @@ export class NativeResearchEngine {
           .parse(JSON.parse(plan.replace(/^```(?:json)?\s*|\s*```$/g, '')));
         const result = await this.mcp.call(
           {
-            op: hash(JSON.stringify([id, tool.server_id, tool.name])).slice(0, 32),
+            op: sha256(JSON.stringify([id, tool.server_id, tool.name])).slice(0, 32),
             taskId: id,
             snapshot: task.mcp!,
             serverId: tool.server_id,
@@ -507,7 +506,7 @@ export class NativeResearchEngine {
         status: 'completed',
         note: answer,
         memory_candidates: parsedAnswer.candidates,
-        answerHash: hash(answer),
+        answerHash: sha256(answer),
         outcome_unknown: false,
         events: [
           ...task.events,
@@ -558,7 +557,7 @@ export class NativeResearchEngine {
   verifyResult(id: string) {
     const task = this.read(id);
     if (task.context) new NativeResearchContext(this.store).verify(task.context, task.question);
-    if (task.status !== 'completed' || task.answerHash !== hash(task.note))
+    if (task.status !== 'completed' || task.answerHash !== sha256(task.note))
       throw new Error('研究成果未完成或已改变');
     this.verifyPublishedSources(task);
     return task;
@@ -610,7 +609,10 @@ export class NativeResearchEngine {
         body: z.string().trim().min(1).max(1000),
       })
       .parse(input);
-    const operation = hash(JSON.stringify(['accept-memory', id, value.candidate_id])).slice(0, 32);
+    const operation = sha256(JSON.stringify(['accept-memory', id, value.candidate_id])).slice(
+      0,
+      32,
+    );
     return this.store.operation(operation, { id, value }, () => {
       const task = this.verifyResult(id),
         candidate = task.memory_candidates.find((row) => row.candidate_id === value.candidate_id);
@@ -624,7 +626,7 @@ export class NativeResearchEngine {
       )
         throw new Error('记忆建议原句校验失败');
       const result = this.store.changeMemory({
-        op_id: hash(operation + '-create').slice(0, 32),
+        op_id: sha256(operation + '-create').slice(0, 32),
         memory_id: null,
         revision: 0,
         kind: value.kind,

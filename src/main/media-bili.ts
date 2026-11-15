@@ -117,12 +117,10 @@ export class BiliMediaCatalog {
         title: view.title.slice(0, 240),
         playlist: true,
         limited: view.pages.length > 100,
-        entries: view.pages
-          .slice(0, 100)
-          .map((p) => ({
-            title: p.part.slice(0, 240),
-            url: `https://www.bilibili.com/video/${view.bvid}/?p=${p.page}`,
-          })),
+        entries: view.pages.slice(0, 100).map((p) => ({
+          title: p.part.slice(0, 240),
+          url: `https://www.bilibili.com/video/${view.bvid}/?p=${p.page}`,
+        })),
       };
     const params = { bvid: view.bvid, cid: String(page.cid), qn: '127', fnval: '4048', fourk: '1' };
     const play = playSchema.parse(

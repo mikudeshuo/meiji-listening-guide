@@ -1,30 +1,13 @@
 import { useEffect, useState } from 'react';
 import { RuntimePanel } from './RuntimePanel';
-import ReactMarkdown from 'react-markdown';
 import { LearningRecords } from './LearningRecords';
 import { SavedLearningNotes } from './SavedLearningNotes';
-import remarkGfm from 'remark-gfm';
+import { Markdown } from './UiParts';
+import { invoke, operationId, toolsRequest } from './ipc';
 function Result({ text }: { text: string }) {
   return (
     <div className="learning-summary">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              onClick={(e) => {
-                e.preventDefault();
-                if (href) void window.assistant.invoke('external', { url: href });
-              }}
-            >
-              {children}
-            </a>
-          ),
-        }}
-      >
-        {text}
-      </ReactMarkdown>
+      <Markdown text={text} />
     </div>
   );
 }
@@ -77,10 +60,6 @@ type Overview = {
   runtime: { dependencies: { id: string; label: string; state: string; version?: string }[] };
 };
 type Material = { binding: { bvid: string; [key: string]: unknown }; title: string; kind: string };
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
-const request = <T,>(action: string, args: unknown = {}) =>
-  invoke<T>('tools:request', { action, args });
-const op = () => crypto.randomUUID().replaceAll('-', '');
 const labels: Record<string, string> = {
   legacy_saved: '旧保存记录（待重新核验）',
   running: '正在运行',
@@ -128,14 +107,17 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
     [serverName, setServerName] = useState(''),
     [endpoint, setEndpoint] = useState('');
   async function refresh() {
-    const next = await request<Overview>('overview');
+    const next = await toolsRequest<Overview>('overview');
     setData(next);
   }
   async function loadMaterials(start = 0) {
-    const result = await request<{ items: Material[]; next_offset: number | null }>('materials', {
-      query,
-      offset: start,
-    });
+    const result = await toolsRequest<{ items: Material[]; next_offset: number | null }>(
+      'materials',
+      {
+        query,
+        offset: start,
+      },
+    );
     setMaterials(start ? (old) => [...old, ...result.items] : result.items);
     setOffset(result.next_offset);
   }
@@ -180,10 +162,14 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
   const toggle = (value: string, list: string[], set: (values: string[]) => void) =>
     set(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
   const editExtension = (change: unknown) =>
-    request('extension-change', { op: op(), revision: data!.extensions.revision, change });
+    toolsRequest('extension-change', {
+      op: operationId(),
+      revision: data!.extensions.revision,
+      change,
+    });
   const editServer = (server: Server, allowed: string[], enabled: boolean) =>
-    request('mcp-change', {
-      op: op(),
+    toolsRequest('mcp-change', {
+      op: operationId(),
       revision: data!.mcp.revision,
       change: {
         kind: 'server',
@@ -409,8 +395,8 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
                 }
                 onClick={() =>
                   void run(() =>
-                    request(flow ? 'workflow-create' : 'agent-create', {
-                      op: op(),
+                    toolsRequest(flow ? 'workflow-create' : 'agent-create', {
+                      op: operationId(),
                       question,
                       channels,
                       web_search:
@@ -488,9 +474,9 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
                     }
                     onClick={() =>
                       void run(() =>
-                        request('workflow-action', {
+                        toolsRequest('workflow-action', {
                           id: task.workflow_id,
-                          op: op(),
+                          op: operationId(),
                           revision: task.revision,
                           fence: task.fence,
                           retry_unknown:
@@ -520,7 +506,7 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
                     disabled={busy}
                     onClick={() =>
                       void run(async () => {
-                        const path = await request<string>('workflow-export', {
+                        const path = await toolsRequest<string>('workflow-export', {
                           id: task.workflow_id,
                         });
                         await invoke('library:reveal', { path });
@@ -547,7 +533,7 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
                 </header>
                 {task.status === 'running' && (
                   <button
-                    onClick={() => void run(() => request('agent-stop', { id: task.task_id }))}
+                    onClick={() => void run(() => toolsRequest('agent-stop', { id: task.task_id }))}
                   >
                     停止研究
                   </button>
@@ -574,7 +560,9 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
                   <button
                     onClick={() =>
                       void run(async () => {
-                        const path = await request<string>('agent-export', { id: task.task_id });
+                        const path = await toolsRequest<string>('agent-export', {
+                          id: task.task_id,
+                        });
                         await invoke('library:open-file', { path });
                         setSaved('已保存并核验研究 Markdown');
                       })
@@ -777,8 +765,8 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
                 disabled={busy || !serverName || !endpoint}
                 onClick={() =>
                   void run(async () => {
-                    await request('mcp-change', {
-                      op: op(),
+                    await toolsRequest('mcp-change', {
+                      op: operationId(),
                       revision: data.mcp.revision,
                       change: {
                         kind: 'server',
@@ -806,8 +794,8 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
                     disabled={busy}
                     onClick={() =>
                       void run(() =>
-                        request('mcp-discover', {
-                          op: op(),
+                        toolsRequest('mcp-discover', {
+                          op: operationId(),
                           id: server.id,
                           revision: data.mcp.revision,
                         }),
@@ -828,8 +816,8 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
                     disabled={busy}
                     onClick={() =>
                       void run(() =>
-                        request('mcp-change', {
-                          op: op(),
+                        toolsRequest('mcp-change', {
+                          op: operationId(),
                           revision: data.mcp.revision,
                           change: { kind: 'remove', id: server.id },
                         }),

@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from 'react';
 import { defaultIdentity, type Identity } from '../../shared/identity';
 import buddy from './assets/mei-avatar.png';
 import lian from './assets/lian-avatar.jpg';
+import { invoke } from './ipc';
 export const IdentityContext = createContext<Identity>(defaultIdentity);
 export function IdentityAvatar({ role }: { role: 'user' | 'assistant' }) {
   const identity = useContext(IdentityContext),
@@ -36,7 +37,7 @@ export function IdentityEditor({
   async function chooseAvatar() {
     setError('');
     try {
-      const data = await window.assistant.invoke<string | null>('identity:avatar');
+      const data = await invoke<string | null>('identity:avatar');
       if (data) update(selected === 'user' ? { userAvatar: data } : { assistantAvatar: data });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

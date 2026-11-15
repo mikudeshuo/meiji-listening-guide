@@ -6,7 +6,7 @@ import type {
   KnowledgeHit,
   KnowledgeSearch,
 } from '../../shared/knowledge';
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 type Answer = {
   answer: {
     paragraphs: { text: string; citations: { id: string; quote: string }[] }[];

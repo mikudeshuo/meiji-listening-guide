@@ -1,9 +1,10 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { CookieJar, Cookie } from 'tough-cookie';
 import { SaxesParser } from 'saxes';
 import { z } from 'zod';
 import { boundedPublicText } from './public-http';
 import { weixinBootstrap } from './im-weixin-html';
+import { sha256 } from './digest';
 
 const hosts = ['wx.qq.com', 'wx2.qq.com', 'wx8.qq.com', 'web.wechat.com', 'web2.wechat.com'];
 const cookieHosts = [
@@ -425,10 +426,7 @@ export class NativeWeixinWebSession {
   }
   async send(peer: string, text: string, operationId: string, signal: AbortSignal) {
     if (!this.session?.user) throw new Error('微信尚未核验身份');
-    const id = String(
-        BigInt('0x' + createHash('sha256').update(operationId).digest('hex').slice(0, 16)) &
-          ((1n << 63n) - 1n),
-      ),
+    const id = String(BigInt('0x' + sha256(operationId).slice(0, 16)) & ((1n << 63n) - 1n)),
       data = await this.json(
         'webwxsendmsg',
         signal,

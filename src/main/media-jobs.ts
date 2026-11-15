@@ -1,6 +1,4 @@
 import { recoverDownloadLocks } from './media-lock-recovery';
-import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream } from 'node:fs';
 import {
   mkdir,
   lstat,
@@ -15,6 +13,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { z } from 'zod';
 import { mediaOptions } from './media-options';
 import { windowsProtect } from './windows-native';
+import { hexId, sha256File, sha256Json } from './digest';
 
 const idSchema = z.string().regex(/^[a-f0-9]{32}$/);
 const receipt = z
@@ -53,14 +52,7 @@ const schema = z
 export type NativeDownloadJob = z.infer<typeof schema>;
 type Receipt = z.infer<typeof receipt>;
 const hashRecipe = (identity: string, source: string, recipe: unknown) =>
-  createHash('sha256')
-    .update(JSON.stringify([identity, source, recipe]))
-    .digest('hex');
-async function digest(path: string) {
-  const hash = createHash('sha256');
-  for await (const chunk of createReadStream(path)) hash.update(chunk);
-  return hash.digest('hex');
-}
+  sha256Json([identity, source, recipe]);
 
 /** An isolated journal format; reading it never mutates the Python queue's existing records. */
 export class NativeDownloadJobs {
@@ -195,7 +187,7 @@ export class NativeDownloadJobs {
         throw new Error('此旧任务已经迁入原生队列，请刷新记录');
       const row = schema.parse({
         version: 1,
-        id: input.legacy?.id || randomUUID().replaceAll('-', ''),
+        id: input.legacy?.id || hexId(),
         legacy: input.legacy,
         revision: 0,
         identity: input.identity,
@@ -300,7 +292,7 @@ export class NativeDownloadJobs {
   }
   async evidence(id: string, name: string): Promise<Receipt> {
     const { path, info } = await this.ownedFile(id, name);
-    return receipt.parse({ relative: name, bytes: info.size, hash: await digest(path) });
+    return receipt.parse({ relative: name, bytes: info.size, hash: await sha256File(path) });
   }
   async complete(id: string, revision: number, outputs: Receipt[], cleanup: string[] = []) {
     await this.initialize();

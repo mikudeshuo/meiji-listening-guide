@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { MemorySuggestions } from './MemorySuggestions';
-const request = <T,>(action: string, args: unknown = {}) =>
-  window.assistant.invoke<T>('tools:request', { action, args });
-const op = () => crypto.randomUUID().replaceAll('-', '');
+import { invoke, operationId, toolsRequest } from './ipc';
 type Session = { conversation_id: string; title: string; revision: number; pinned: boolean };
 type Task = {
   task_id: string;
@@ -42,7 +40,7 @@ export function LearningRecords() {
     [error, setError] = useState(''),
     [notice, setNotice] = useState('');
   async function listing(start = 0) {
-    const page = await request<{ entries: Session[]; has_more: boolean }>('conversations', {
+    const page = await toolsRequest<{ entries: Session[]; has_more: boolean }>('conversations', {
       offset: start,
     });
     setSessions(start ? (old) => [...old, ...page.entries] : page.entries);
@@ -50,7 +48,7 @@ export function LearningRecords() {
   }
   async function refresh() {
     await listing();
-    setMemories(await request<Memories>('memories'));
+    setMemories(await toolsRequest<Memories>('memories'));
   }
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -71,7 +69,7 @@ export function LearningRecords() {
     if (!detail?.research_tasks?.some((task) => task.status === 'running')) return;
     const timer = setInterval(
       () =>
-        void request<Detail>('conversation-read', { id: detail.conversation_id })
+        void toolsRequest<Detail>('conversation-read', { id: detail.conversation_id })
           .then(setDetail)
           .catch((reason) => setError(String(reason))),
       2000,
@@ -104,9 +102,9 @@ export function LearningRecords() {
             disabled={busy || !title.trim()}
             onClick={() =>
               void run(async () => {
-                const created = await request<Session>('conversation-create', { title });
+                const created = await toolsRequest<Session>('conversation-create', { title });
                 setDetail(
-                  await request<Detail>('conversation-read', { id: created.conversation_id }),
+                  await toolsRequest<Detail>('conversation-read', { id: created.conversation_id }),
                 );
                 setTitle('');
                 await listing();
@@ -127,7 +125,7 @@ export function LearningRecords() {
               onClick={() =>
                 void run(async () => {
                   setDetail(
-                    await request<Detail>('conversation-read', { id: item.conversation_id }),
+                    await toolsRequest<Detail>('conversation-read', { id: item.conversation_id }),
                   );
                   setTitle(item.title);
                 })
@@ -151,19 +149,21 @@ export function LearningRecords() {
                 disabled={busy || !title.trim()}
                 onClick={() =>
                   void run(async () => {
-                    const organization = await request<{ revision: number; pinned: boolean }>(
+                    const organization = await toolsRequest<{ revision: number; pinned: boolean }>(
                       'conversation-organization',
                       { id: detail.conversation_id },
                     );
-                    await request('conversation-organize', {
+                    await toolsRequest('conversation-organize', {
                       id: detail.conversation_id,
-                      op: op(),
+                      op: operationId(),
                       revision: organization.revision,
                       title,
                       pinned: organization.pinned,
                     });
                     setDetail(
-                      await request<Detail>('conversation-read', { id: detail.conversation_id }),
+                      await toolsRequest<Detail>('conversation-read', {
+                        id: detail.conversation_id,
+                      }),
                     );
                     await listing();
                   })
@@ -175,13 +175,13 @@ export function LearningRecords() {
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    const organization = await request<{ revision: number; pinned: boolean }>(
+                    const organization = await toolsRequest<{ revision: number; pinned: boolean }>(
                       'conversation-organization',
                       { id: detail.conversation_id },
                     );
-                    await request('conversation-organize', {
+                    await toolsRequest('conversation-organize', {
                       id: detail.conversation_id,
-                      op: op(),
+                      op: operationId(),
                       revision: organization.revision,
                       title: detail.title,
                       pinned: !organization.pinned,
@@ -209,12 +209,12 @@ export function LearningRecords() {
               }
               onClick={() =>
                 void run(async () => {
-                  const overview = await request<{
+                  const overview = await toolsRequest<{
                     extensions: { revision: number };
                     mcp: { revision: number };
                   }>('overview');
-                  await request('agent-create', {
-                    op: op(),
+                  await toolsRequest('agent-create', {
+                    op: operationId(),
                     question,
                     channels: ['library', 'memory', 'conversations'],
                     skills: { revision: overview.extensions.revision, ids: [] },
@@ -224,7 +224,7 @@ export function LearningRecords() {
                   });
                   setQuestion('');
                   setDetail(
-                    await request<Detail>('conversation-read', { id: detail.conversation_id }),
+                    await toolsRequest<Detail>('conversation-read', { id: detail.conversation_id }),
                   );
                   await listing();
                 })
@@ -247,9 +247,9 @@ export function LearningRecords() {
                   <button
                     onClick={() =>
                       void run(async () => {
-                        await request('agent-stop', { id: task.task_id });
+                        await toolsRequest('agent-stop', { id: task.task_id });
                         setDetail(
-                          await request<Detail>('conversation-read', {
+                          await toolsRequest<Detail>('conversation-read', {
                             id: detail.conversation_id,
                           }),
                         );
@@ -279,8 +279,10 @@ export function LearningRecords() {
                     disabled={busy}
                     onClick={() =>
                       void run(async () => {
-                        const path = await request<string>('agent-export', { id: task.task_id });
-                        await window.assistant.invoke('library:reveal', { path });
+                        const path = await toolsRequest<string>('agent-export', {
+                          id: task.task_id,
+                        });
+                        await invoke('library:reveal', { path });
                         setNotice('所选会话成果已保存');
                       })
                     }
@@ -293,7 +295,9 @@ export function LearningRecords() {
           </>
         )}
       </section>
-      <MemorySuggestions saved={async () => setMemories(await request<Memories>('memories'))} />
+      <MemorySuggestions
+        saved={async () => setMemories(await toolsRequest<Memories>('memories'))}
+      />
       <section className="knowledge-card">
         <h3>
           学习记忆 · {memories?.capacity.used || 0}/{memories?.capacity.limit || 100}
@@ -329,9 +333,9 @@ export function LearningRecords() {
             disabled={busy || !memoryTitle.trim() || !body.trim()}
             onClick={() =>
               void run(async () => {
-                await request('memory-change', {
+                await toolsRequest('memory-change', {
                   value: {
-                    op_id: op(),
+                    op_id: operationId(),
                     memory_id: editing?.memory_id || null,
                     revision: editing?.revision || 0,
                     kind,
@@ -343,7 +347,7 @@ export function LearningRecords() {
                   },
                 });
                 edit();
-                setMemories(await request<Memories>('memories'));
+                setMemories(await toolsRequest<Memories>('memories'));
                 setNotice('学习记忆已保存');
               })
             }
@@ -366,16 +370,16 @@ export function LearningRecords() {
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    await request('memory-change', {
+                    await toolsRequest('memory-change', {
                       deleting: true,
                       value: {
-                        op_id: op(),
+                        op_id: operationId(),
                         memory_id: memory.memory_id,
                         revision: memory.revision,
                       },
                     });
                     if (editing?.memory_id === memory.memory_id) edit();
-                    setMemories(await request<Memories>('memories'));
+                    setMemories(await toolsRequest<Memories>('memories'));
                   })
                 }
               >

@@ -1,10 +1,9 @@
-import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { NativeResearchStore } from './research-store';
 import { NativeResearchSources, type ResearchBinding } from './research-sources';
 import { NativeResearchEngine, type NativeResearchTask } from './research-engine';
+import { hexId, sha256 } from './digest';
 const op = z.string().regex(/^[a-f0-9]{32}$/);
-const hash = (text: string) => createHash('sha256').update(text).digest('hex');
 export type NativeResearchFlow = {
   workflow_id: string;
   question: string;
@@ -75,7 +74,7 @@ export class NativeResearchWorkflows {
       this.sources.verify(materials);
       const now = new Date().toISOString(),
         flow: NativeResearchFlow = {
-          workflow_id: randomUUID().replaceAll('-', ''),
+          workflow_id: hexId(),
           question: request.question,
           status: 'paused',
           revision: 0,
@@ -88,7 +87,7 @@ export class NativeResearchWorkflows {
             answer: '',
             answer_sha256: null,
             task_id: null,
-            create_op: randomUUID().replaceAll('-', ''),
+            create_op: hexId(),
           })),
           error_code: '',
           created_at: now,
@@ -190,7 +189,7 @@ export class NativeResearchWorkflows {
         if (flow.status !== 'running' || flow.fence !== fence) throw new Error('工作流已改变');
         const step = flow.steps[index];
         if (step.status === 'completed') {
-          if (step.answer_sha256 !== hash(step.answer)) throw new Error('已有步骤内容已改变');
+          if (step.answer_sha256 !== sha256(step.answer)) throw new Error('已有步骤内容已改变');
           this.engine.verifyResult(step.task_id!);
           continue;
         }
@@ -233,7 +232,7 @@ export class NativeResearchWorkflows {
                   ...item,
                   status: 'completed',
                   answer: result.note,
-                  answer_sha256: hash(result.note),
+                  answer_sha256: sha256(result.note),
                 }
               : item,
           ),
@@ -261,7 +260,7 @@ export class NativeResearchWorkflows {
     if (
       flow.status !== 'completed' ||
       flow.steps.some(
-        (step) => step.status !== 'completed' || step.answer_sha256 !== hash(step.answer),
+        (step) => step.status !== 'completed' || step.answer_sha256 !== sha256(step.answer),
       )
     )
       throw new Error('工作流尚未完整核验');

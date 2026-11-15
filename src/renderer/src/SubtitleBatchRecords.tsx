@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { SubtitleSyncTask } from '../../shared/subtitle-sync';
 import type { SubtitleDerivedTask } from '../../shared/subtitle-derived';
 import { noteTitles, type VideoNoteMode } from '../../shared/video-notes';
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 export function SubtitleBatchRecords({
   visible,
   tasks,

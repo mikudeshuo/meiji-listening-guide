@@ -7,6 +7,7 @@ import {
 } from '../../shared/appearance';
 import type { Course } from '../../shared/types';
 import { ChatMessage } from './ChatMessage';
+import { invoke } from './ipc';
 const colors = {
   default: 'var(--blue)',
   lavender: '#9279c7',
@@ -101,7 +102,7 @@ export function AppearanceEditor({
         let result: AppearanceState | undefined;
         try {
           for (const [id, value] of batch)
-            result = await window.assistant.invoke<AppearanceState>('appearance:save', {
+            result = await invoke<AppearanceState>('appearance:save', {
               value,
               courseId: id || undefined,
             });
@@ -209,7 +210,7 @@ export function AppearanceEditor({
             onClick={() =>
               void run(async () =>
                 commit(
-                  await window.assistant.invoke<AppearanceState>('appearance:save', {
+                  await invoke<AppearanceState>('appearance:save', {
                     value,
                     courseId: scope === 'course' ? editingCourseId : undefined,
                   }),
@@ -247,7 +248,7 @@ export function AppearanceEditor({
                 onClick={() =>
                   void run(async () =>
                     commit(
-                      await window.assistant.invoke<AppearanceState>('appearance:clear', {
+                      await invoke<AppearanceState>('appearance:clear', {
                         courseId,
                       }),
                     ),
@@ -284,10 +285,9 @@ export function AppearanceEditor({
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    const next = await window.assistant.invoke<AppearanceState>(
-                      'appearance:clear',
-                      { courseId: editingCourseId },
-                    );
+                    const next = await invoke<AppearanceState>('appearance:clear', {
+                      courseId: editingCourseId,
+                    });
                     commit(next);
                     setValue(next.global);
                   })
@@ -318,7 +318,7 @@ export function AppearanceEditor({
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    const image = await window.assistant.invoke<string | null>('appearance:image');
+                    const image = await invoke<string | null>('appearance:image');
                     if (image) update({ image, background: 'image' });
                   })
                 }
@@ -362,7 +362,7 @@ export function AppearanceEditor({
                   const next = { ...value, accent: 'default' as const };
                   setValue(next);
                   commit(
-                    await window.assistant.invoke<AppearanceState>('appearance:save', {
+                    await invoke<AppearanceState>('appearance:save', {
                       value: next,
                       courseId: scope === 'course' ? editingCourseId : undefined,
                     }),
@@ -415,7 +415,7 @@ export function AppearanceEditor({
                 const next = { ...defaultAppearance };
                 setValue(next);
                 commit(
-                  await window.assistant.invoke<AppearanceState>('appearance:save', {
+                  await invoke<AppearanceState>('appearance:save', {
                     value: next,
                     courseId: scope === 'course' ? editingCourseId : undefined,
                   }),

@@ -7,6 +7,7 @@ import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { parseSrt, toSrt } from '../shared/srt';
+import { resourcesDirectory } from './paths';
 
 const replySchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('progress'), message: z.string().max(2000) }),
@@ -30,7 +31,7 @@ export async function transcribeLocalVideo(
   signal: AbortSignal,
   progress: (message: string) => void,
 ) {
-  const resources = app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources');
+  const resources = resourcesDirectory();
   const model = join(resources, 'asr/onnx-small'),
     ffmpeg = join(resources, 'video/ffmpeg.exe');
   if (!existsSync(join(model, 'acquisition.json')) || !existsSync(ffmpeg))

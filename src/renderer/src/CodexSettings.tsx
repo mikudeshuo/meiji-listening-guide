@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CodexAccount, CodexModel, Settings } from '../../shared/types';
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 export function CodexSettings({
   value,
   update,

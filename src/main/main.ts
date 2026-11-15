@@ -30,7 +30,6 @@ import { IdentityStore } from './identity';
 import { app, BrowserWindow, dialog, ipcMain, net, session } from 'electron';
 import { join, extname, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
 import { readFile, writeFile, rm } from 'node:fs/promises';
 import { z } from 'zod';
 import { Store } from './db';
@@ -50,6 +49,8 @@ import { managedFile } from './file-manager';
 import { Zhiyun } from './zhiyun';
 import { ZhiyunBrowser } from './zhiyun-browser';
 import { verifyGeneratedPdf } from './pdf-ppt-cleanup';
+import { resourcesDirectory } from './paths';
+import { sha256, sha256Json } from './digest';
 const mainDir = fileURLToPath(new URL('.', import.meta.url));
 let store: Store | undefined, mainWindow: BrowserWindow | undefined;
 let shutdownBackends: (() => Promise<void>) | undefined,
@@ -79,11 +80,9 @@ else
       app.quit();
     });
 async function startApplication() {
-  const root = app.getPath('userData');
-  const runtime = new RuntimeComponents(
-    app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
-    app.getVersion(),
-  );
+  const root = app.getPath('userData'),
+    resources = resourcesDirectory();
+  const runtime = new RuntimeComponents(resources, app.getVersion());
   diagnostic(root, 'application', 'startup', { code: app.getVersion() });
   const portable =
     process.env.LISTENING_ASSISTANT_DATA && !process.env.LISTENING_ASSISTANT_PORTABLE_TEST
@@ -130,10 +129,7 @@ async function startApplication() {
     minWidth: 1050,
     minHeight: 700,
     title: '梅酱的听课指南',
-    icon: join(
-      app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
-      'icon.png',
-    ),
+    icon: join(resources, 'icon.png'),
     backgroundColor: '#f9fafb',
     webPreferences: {
       preload: join(mainDir, '../preload/preload.cjs'),
@@ -171,32 +167,23 @@ async function startApplication() {
     },
     (message) => emit({ kind: 'progress', data: { stage: '智云课堂', message } }),
   );
+  // A test run may point both model clients at a scripted stand-in instead of the bundled Codex CLI.
+  const codexFixture = process.env.LISTENING_ASSISTANT_DATA
+    ? process.env.LISTENING_ASSISTANT_CODEX_FIXTURE
+    : undefined;
+  const codexExecutable = codexFixture
+    ? process.execPath
+    : join(resources, 'codex', 'bin', 'codex.exe');
   const codex = new CodexClient(
-    process.env.LISTENING_ASSISTANT_CODEX_FIXTURE && process.env.LISTENING_ASSISTANT_DATA
-      ? process.execPath
-      : join(
-          app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
-          'codex',
-          'bin',
-          'codex.exe',
-        ),
+    codexExecutable,
     join(root, 'codex-account'),
     join(root, 'codex-workspace'),
     settings,
     (message) => emit({ kind: 'progress', data: { stage: 'Codex', message } }),
-    process.env.LISTENING_ASSISTANT_CODEX_FIXTURE && process.env.LISTENING_ASSISTANT_DATA
-      ? [process.env.LISTENING_ASSISTANT_CODEX_FIXTURE]
-      : [],
+    codexFixture ? [codexFixture] : [],
   );
   const deepseek = new CodexClient(
-    process.env.LISTENING_ASSISTANT_CODEX_FIXTURE && process.env.LISTENING_ASSISTANT_DATA
-      ? process.execPath
-      : join(
-          app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
-          'codex',
-          'bin',
-          'codex.exe',
-        ),
+    codexExecutable,
     join(root, 'deepseek-account'),
     join(root, 'deepseek-workspace'),
     settings,
@@ -205,9 +192,7 @@ async function startApplication() {
         kind: 'progress',
         data: { stage: 'DeepSeek', message: message.replace(/Codex/g, 'DeepSeek') },
       }),
-    process.env.LISTENING_ASSISTANT_CODEX_FIXTURE && process.env.LISTENING_ASSISTANT_DATA
-      ? [process.env.LISTENING_ASSISTANT_CODEX_FIXTURE]
-      : [],
+    codexFixture ? [codexFixture] : [],
     () => validateDeepSeek(settings.profile()),
   );
   const routed = modelRouter(() => (settings.get().connection === 'deepseek' ? deepseek : codex));
@@ -216,10 +201,8 @@ async function startApplication() {
       ? new Api(settings, net.fetch.bind(net))
       : undefined;
   const api = testApi || routed;
-  const knowledge = new KnowledgeBase(
-    app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
-    join(libraryRoot, '知识库数据'),
-    (message) => emit({ kind: 'progress', data: { stage: '知识库', message } }),
+  const knowledge = new KnowledgeBase(resources, join(libraryRoot, '知识库数据'), (message) =>
+    emit({ kind: 'progress', data: { stage: '知识库', message } }),
   );
   const visualConnection = () => {
     const value = settings.get(),
@@ -227,11 +210,7 @@ async function startApplication() {
       profile = value.profiles.some((item) => item.id === value.activeProfile)
         ? settings.profile()
         : null;
-    return createHash('sha256')
-      .update(
-        JSON.stringify([connection, !testApi && connection === 'codex' ? value.codex : profile]),
-      )
-      .digest('hex');
+    return sha256Json([connection, !testApi && connection === 'codex' ? value.codex : profile]);
   };
   const toolsBackend = new NativeResearchBackend(
     join(libraryRoot, '知识库数据'),
@@ -247,7 +226,7 @@ async function startApplication() {
         signal,
       );
     },
-    app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
+    resources,
   );
   const subtitleSync = new SubtitleSync(join(libraryRoot, '字幕同步记录'), libraryRoot);
   const subtitleDerived = new SubtitleDerived(join(libraryRoot, '笔记生成记录'), libraryRoot);
@@ -258,34 +237,22 @@ async function startApplication() {
     /^http:\/\/127\.0\.0\.1:\d+$/.test(process.env.LISTENING_ASSISTANT_BILI_FIXTURE || '')
       ? process.env.LISTENING_ASSISTANT_BILI_FIXTURE
       : undefined;
-  const biliResources = new BiliResources(
-    biliFixture
-      ? (url, init) => {
-          const target = new URL(url);
-          return fetch(biliFixture + target.pathname + target.search, {
-            ...init,
-            credentials: 'omit',
-          });
-        }
-      : (biliSession.fetch.bind(biliSession) as typeof fetch),
-  );
-  const media = new MediaBackend(
-    app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
-    join(libraryRoot, '媒体下载'),
-    biliResources,
-  );
+  // Signed-in Bilibili requests go through the app's own session; a test run redirects them to a local stand-in.
+  const biliFetch: ConstructorParameters<typeof BiliResources>[0] = biliFixture
+    ? (url, init) => {
+        const target = new URL(url);
+        return fetch(biliFixture + target.pathname + target.search, {
+          ...init,
+          credentials: 'omit',
+        });
+      }
+    : (biliSession.fetch.bind(biliSession) as typeof fetch);
+  const biliResources = new BiliResources(biliFetch);
+  const media = new MediaBackend(resources, join(libraryRoot, '媒体下载'), biliResources);
   const visual = new VisualTasks(join(libraryRoot, '画面识别成果'), media);
   const biliDiscussion = new BiliDiscussion(
     biliResources,
-    biliFixture
-      ? (url, init) => {
-          const target = new URL(url);
-          return fetch(biliFixture + target.pathname + target.search, {
-            ...init,
-            credentials: 'omit',
-          });
-        }
-      : (biliSession.fetch.bind(biliSession) as typeof fetch),
+    biliFetch,
     join(libraryRoot, '媒体下载'),
   );
   const answerDependencies = {
@@ -525,7 +492,7 @@ async function startApplication() {
       // Sync does not silently download a long video. Missing subtitles remain
       // retryable; the existing offline-transcription button is a separate choice.
       const subtitle = await fetchBiliSubtitle(item.url, signal);
-      const digest = createHash('sha256').update(subtitle.srt).digest('hex');
+      const digest = sha256(subtitle.srt);
       const prior = (await subtitleSync.list())
         .flatMap((task) => (task.courseName === selectedCourse ? task.items : []))
         .find((row) => row.url === item.url && row.hash === digest && row.path);

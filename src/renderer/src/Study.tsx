@@ -9,8 +9,8 @@ import {
   type StudyEntry,
 } from '../../shared/study';
 import type { Course, Detail } from '../../shared/types';
+import { invoke } from './ipc';
 GlobalWorkerOptions.workerSrc = workerUrl;
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
 type Book = { id: string; path: string; pages: number };
 export function Study({
   courses,

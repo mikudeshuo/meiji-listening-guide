@@ -1,5 +1,5 @@
 import CipherDatabase from 'better-sqlite3-multiple-ciphers';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 import {
   statSync,
   lstatSync,
@@ -14,6 +14,7 @@ import { zstdDecompressSync, constants as zlibConstants } from 'node:zlib';
 import { z } from 'zod';
 import { readWeixinIdentity, scanWeixinKeys } from './im-weixin-crypto';
 import type { WeixinMemory } from './im-weixin-crypto';
+import { hexId, sha256 } from './digest';
 
 type Row = Record<string, unknown>;
 export type BoundWeixinMemory = WeixinMemory & {
@@ -95,7 +96,7 @@ export function weixinText(value: unknown, kind: number) {
   }
 }
 export class NativeWeixinReader {
-  readonly readerId = randomUUID().replaceAll('-', '');
+  readonly readerId = hexId();
   readonly account: string;
   private keys = new Map<string, Buffer>();
   private identities = new Map<string, string>();
@@ -212,12 +213,10 @@ export class NativeWeixinReader {
         )
         .all(this.account) as Row[];
       return {
-        peers: rows
-          .slice(0, 5000)
-          .map((row) => ({
-            peer: String(row.username),
-            name: String(row.remark || row.nick || row.username),
-          })),
+        peers: rows.slice(0, 5000).map((row) => ({
+          peer: String(row.username),
+          name: String(row.remark || row.nick || row.username),
+        })),
         coverage: rows.length > 5000 ? 'partial_page_limit' : 'local_contact_table',
       };
     });
@@ -302,11 +301,7 @@ export class NativeWeixinReader {
           return {
             seq,
             local,
-            mid:
-              'wx:' +
-              createHash('sha256')
-                .update(name + ':' + local)
-                .digest('hex'),
+            mid: 'wx:' + sha256(name + ':' + local),
             sender: String(sender?.name || ''),
             ts: z
               .number()

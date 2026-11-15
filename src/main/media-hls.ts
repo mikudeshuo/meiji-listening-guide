@@ -7,6 +7,7 @@ import { transferMedia } from './media-transfer';
 import { platformMediaAddress } from './media-platforms';
 import { OwnedMediaArtifact } from './media-artifact';
 import type { NativeMediaOptions } from './media-options';
+import { sha256, sha256Json } from './digest';
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 function attrs(line: string) {
   const result: Record<string, string> = {},
@@ -199,9 +200,7 @@ export async function downloadNativeHls(input: {
           result = await transferMedia({
             directory: input.directory,
             key: name,
-            identity: createHash('sha256')
-              .update(input.identity + part.url)
-              .digest('hex'),
+            identity: sha256(input.identity + part.url),
             url: part.url,
             headers: input.headers,
             fetcher: input.fetcher,
@@ -221,14 +220,10 @@ export async function downloadNativeHls(input: {
         artifact = new OwnedMediaArtifact(
           input.directory,
           name,
-          createHash('sha256')
-            .update(
-              JSON.stringify([
-                'hls-v1',
-                proofs.map((row) => [row.hash, row.key, row.sequence?.toString()]),
-              ]),
-            )
-            .digest('hex'),
+          sha256Json([
+            'hls-v1',
+            proofs.map((row) => [row.hash, row.key, row.sequence?.toString()]),
+          ]),
         ),
         prepared = await artifact.prepare();
       if (!prepared.reused) {
@@ -258,8 +253,7 @@ export async function downloadNativeHls(input: {
               if (!part.key.iv) iv.writeBigUInt64BE(part.sequence!, 8);
               const decipher = createDecipheriv('aes-128-cbc', key, iv),
                 raw = await readFile(part.path);
-              if (createHash('sha256').update(raw).digest('hex') !== part.hash)
-                throw new Error('HLS 恢复片段已改变');
+              if (sha256(raw) !== part.hash) throw new Error('HLS 恢复片段已改变');
               bytes = [Buffer.concat([decipher.update(raw), decipher.final()])];
             } else bytes = createReadStream(part.path);
             const digest = createHash('sha256');

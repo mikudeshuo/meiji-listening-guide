@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { imRequest } from './ipc';
 type Scope = {
   connection_id: string;
   revision: string;
@@ -26,8 +27,6 @@ type Job = {
   error?: string;
   allowed_actions: string[];
 };
-const request = <T,>(action: string, value: unknown = {}) =>
-  window.assistant.invoke<T>('tools:request', { action: 'im', args: { action, value } });
 const labels: Record<string, string> = {
   pending: '等待生成',
   running: '正在处理',
@@ -76,10 +75,10 @@ export function ImAutomation({
   const active = runs.some((r) => r.peer === scope.peer && r.state === 'running'),
     supported = ['qq_napcat', 'weixin_local'].includes(scope.platform);
   async function status() {
-    setRuns((await request<{ runs: Run[] }>('runs', { ...scope, action: 'status' })).runs);
+    setRuns((await imRequest<{ runs: Run[] }>('runs', { ...scope, action: 'status' })).runs);
   }
   async function list(start = 0) {
-    const value = await request<{ jobs: Job[]; next_offset: number | null }>('reply-jobs', {
+    const value = await imRequest<{ jobs: Job[]; next_offset: number | null }>('reply-jobs', {
       ...scope,
       action: 'list',
       limit: 25,
@@ -90,7 +89,7 @@ export function ImAutomation({
     setOffset(value.next_offset);
   }
   async function refresh() {
-    const next = await request<Rules>('rules', scope);
+    const next = await imRequest<Rules>('rules', scope);
     setRules(next);
     setIdentity(next.effective.identity);
     setMode(next.effective.mode);
@@ -99,7 +98,7 @@ export function ImAutomation({
     setChosen(next.effective.knowledge_ids);
     setLibraries(
       (
-        await request<{ libraries: { library_id: string; label: string; available: boolean }[] }>(
+        await imRequest<{ libraries: { library_id: string; label: string; available: boolean }[] }>(
           'libraries',
         )
       ).libraries,
@@ -224,8 +223,8 @@ export function ImAutomation({
           disabled={busy || !rules || interval < 5 || interval > 3600 || limit < 1 || limit > 120}
           onClick={() =>
             void run(async () => {
-              const model = await request<{ profile_id: string }>('model');
-              await request('rules', {
+              const model = await imRequest<{ profile_id: string }>('model');
+              await imRequest('rules', {
                 ...scope,
                 level: 'conversation',
                 expected_revision: rules!.conversation.revision,
@@ -280,7 +279,7 @@ export function ImAutomation({
               }
               onClick={() =>
                 void run(async () => {
-                  await request('runs', {
+                  await imRequest('runs', {
                     ...scope,
                     action: 'start',
                     peers: [scope.peer],
@@ -298,7 +297,7 @@ export function ImAutomation({
               disabled={busy || !active}
               onClick={() =>
                 void run(async () => {
-                  await request('runs', { ...scope, action: 'pause' });
+                  await imRequest('runs', { ...scope, action: 'pause' });
                   setConfirmed(false);
                   await status();
                   await list();
@@ -335,7 +334,7 @@ export function ImAutomation({
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
-                      await request('reply-jobs', {
+                      await imRequest('reply-jobs', {
                         ...scope,
                         action: 'reconcile',
                         job_id: job.id,
@@ -352,7 +351,7 @@ export function ImAutomation({
                   disabled={busy || !active}
                   onClick={() =>
                     void run(async () => {
-                      await request('reply-jobs', {
+                      await imRequest('reply-jobs', {
                         ...scope,
                         action: 'retry_generation',
                         job_id: job.id,
@@ -382,7 +381,7 @@ export function ImAutomation({
         </p>
         <button
           disabled={busy}
-          onClick={() => void run(async () => setCleanup(await request('cleanup', scope)))}
+          onClick={() => void run(async () => setCleanup(await imRequest('cleanup', scope)))}
         >
           预览可清理记录
         </button>
@@ -397,7 +396,7 @@ export function ImAutomation({
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  await request('cleanup', {
+                  await imRequest('cleanup', {
                     ...scope,
                     preview_id: cleanup.preview_id,
                     user_confirmed: true,

@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-const request = <T,>(action: string, args: unknown = {}) =>
-  window.assistant.invoke<T>('tools:request', { action, args });
-const op = () => crypto.randomUUID().replaceAll('-', '');
+import { invoke, operationId, toolsRequest } from './ipc';
 type Receipt = { note_id: string; title: string; body_sha256: string; created_at: string };
 type Note = { receipt: Receipt; markdown: string; lifecycle: { revision: number; state: string } };
 type Preview = {
@@ -27,7 +25,7 @@ export function SavedLearningNotes() {
     [busy, setBusy] = useState(false),
     [source, setSource] = useState<{ status: string }>();
   async function list(start = 0) {
-    const page = await request<{ entries: Receipt[]; has_more: boolean }>('notes', {
+    const page = await toolsRequest<{ entries: Receipt[]; has_more: boolean }>('notes', {
       query,
       state,
       offset: start,
@@ -50,14 +48,14 @@ export function SavedLearningNotes() {
   useEffect(() => {
     void run(async () => {
       await list();
-      const value = await request<{
+      const value = await toolsRequest<{
         tasks: { task_id: string; question: string; status: string }[];
       }>('overview');
       setTasks(value.tasks.filter((item) => item.status === 'completed'));
     });
   }, []);
   async function read(id: string) {
-    const next = await request<Note>('note-read', { id });
+    const next = await toolsRequest<Note>('note-read', { id });
     setNote(next);
     setMarkdown(next.markdown);
     setSource(undefined);
@@ -88,7 +86,9 @@ export function SavedLearningNotes() {
           <button
             disabled={busy || !task}
             onClick={() =>
-              void run(async () => setPreview(await request<Preview>('note-preview', { id: task })))
+              void run(async () =>
+                setPreview(await toolsRequest<Preview>('note-preview', { id: task })),
+              )
             }
           >
             预览待保存笔记
@@ -104,7 +104,7 @@ export function SavedLearningNotes() {
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  const saved = await request<Note>('note-save', {
+                  const saved = await toolsRequest<Note>('note-save', {
                     id: preview.task_id,
                     expected: {
                       kb_root_id: preview.kb_root_id,
@@ -188,11 +188,11 @@ export function SavedLearningNotes() {
                 }
                 onClick={() =>
                   void run(async () => {
-                    const saved = await request<Note>('note-revise', {
+                    const saved = await toolsRequest<Note>('note-revise', {
                       value: {
                         action: 'manual_revision',
                         schema_version: '1',
-                        operation_id: op(),
+                        operation_id: operationId(),
                         parent_note_id: note.receipt.note_id,
                         parent_body_sha256: note.receipt.body_sha256,
                         markdown,
@@ -211,7 +211,7 @@ export function SavedLearningNotes() {
                 onClick={() =>
                   void run(async () => {
                     setSource(
-                      await request<{ status: string }>('note-source', {
+                      await toolsRequest<{ status: string }>('note-source', {
                         id: note.receipt.note_id,
                       }),
                     );
@@ -224,8 +224,10 @@ export function SavedLearningNotes() {
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    const path = await request<string>('note-export', { id: note.receipt.note_id });
-                    await window.assistant.invoke('library:reveal', { path });
+                    const path = await toolsRequest<string>('note-export', {
+                      id: note.receipt.note_id,
+                    });
+                    await invoke('library:reveal', { path });
                     setNotice('笔记 Markdown 已保存并核验');
                   })
                 }
@@ -236,12 +238,12 @@ export function SavedLearningNotes() {
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    await request('note-lifecycle', {
+                    await toolsRequest('note-lifecycle', {
                       value: {
                         note_id: note.receipt.note_id,
                         body_sha256: note.receipt.body_sha256,
                         expected_revision: note.lifecycle.revision,
-                        operation_id: op(),
+                        operation_id: operationId(),
                         action: note.lifecycle.state === 'archived' ? 'restore' : 'archive',
                       },
                     });

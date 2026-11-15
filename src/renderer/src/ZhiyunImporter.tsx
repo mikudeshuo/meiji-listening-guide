@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ZhiyunCourse, ZhiyunLesson } from '../../shared/types';
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 export function ZhiyunImporter({
   visible,
   close,

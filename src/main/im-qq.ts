@@ -1,6 +1,6 @@
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { imLocalJson, imLoopback } from './im-loopback';
+import { sha256 } from './digest';
 const qq = z.union([
   z.string().regex(/^\d{1,18}$/),
   z.number().int().positive().max(Number.MAX_SAFE_INTEGER).transform(String),
@@ -202,9 +202,7 @@ export class NativeNapcatLogin {
       await this.action(
         'auth/login',
         {
-          hash: createHash('sha256')
-            .update(this.token + '.napcat')
-            .digest('hex'),
+          hash: sha256(this.token + '.napcat'),
         },
         signal,
         false,

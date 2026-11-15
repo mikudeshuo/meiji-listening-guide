@@ -3,7 +3,8 @@ import { lstat, realpath, writeFile, readFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import { z } from 'zod';
 import { createHash } from 'node:crypto';
-import { OwnedMediaArtifact, mediaFileHash } from './media-artifact';
+import { OwnedMediaArtifact } from './media-artifact';
+import { sha256File, sha256Json } from './digest';
 import type { NativeMediaOptions } from './media-options';
 import { checkedMediaIntervals, retimeMediaCues, type MediaInterval } from './media-timeline';
 
@@ -99,11 +100,7 @@ export class NativeMediaMux {
       artifact = new OwnedMediaArtifact(
         base,
         'cover.jpg',
-        createHash('sha256')
-          .update(
-            JSON.stringify(['cover-v1', createHash('sha256').update(bytes).digest('hex'), crop]),
-          )
-          .digest('hex'),
+        sha256Json(['cover-v1', createHash('sha256').update(bytes).digest('hex'), crop]),
       );
     try {
       await writeFile(source, bytes, { flag: 'wx' });
@@ -205,9 +202,7 @@ export class NativeMediaMux {
       artifact = new OwnedMediaArtifact(
         base,
         basename(output),
-        createHash('sha256')
-          .update(JSON.stringify(['concat-v1', lines, await Promise.all(paths.map(mediaFileHash))]))
-          .digest('hex'),
+        sha256Json(['concat-v1', lines, await Promise.all(paths.map(sha256File))]),
       );
     const prepared = await artifact.prepare();
     if (!prepared.reused)
@@ -497,18 +492,14 @@ export class NativeMediaMux {
     const artifact = new OwnedMediaArtifact(
         directory,
         basename(output),
-        createHash('sha256')
-          .update(
-            JSON.stringify([
-              'mux-v1',
-              args,
-              input.expectedDuration,
-              input.chapters,
-              ...(kept ? [kept] : []),
-              await Promise.all(inputs.map(mediaFileHash)),
-            ]),
-          )
-          .digest('hex'),
+        sha256Json([
+          'mux-v1',
+          args,
+          input.expectedDuration,
+          input.chapters,
+          ...(kept ? [kept] : []),
+          await Promise.all(inputs.map(sha256File)),
+        ]),
       ),
       prepared = await artifact.prepare();
     if (!prepared.reused) await this.command('ffmpeg.exe', args, input.signal);

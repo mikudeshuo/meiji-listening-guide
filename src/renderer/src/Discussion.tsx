@@ -1,5 +1,5 @@
 import { useState } from 'react';
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 type Item = {
   id: string;
   text: string;

@@ -49,7 +49,8 @@ import type {
   Settings,
 } from '../../shared/types';
 import { milliseconds, time } from '../../shared/srt';
-import { invoke, basename, Modal, Markdown } from './UiParts';
+import { basename, Modal, Markdown } from './UiParts';
+import { invoke } from './ipc';
 import {
   NewCourse,
   NewLecture,

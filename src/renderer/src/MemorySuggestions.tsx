@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { toolsRequest } from './ipc';
 type Candidate = {
   candidate_id: string;
   kind: string;
@@ -9,8 +10,6 @@ type Candidate = {
   status: string;
 };
 type Task = { task_id: string; question: string; memory_candidates: Candidate[] };
-const request = <T,>(action: string, args: unknown = {}) =>
-  window.assistant.invoke<T>('tools:request', { action, args });
 export function MemorySuggestions({ saved }: { saved: () => Promise<void> }) {
   const [tasks, setTasks] = useState<Task[]>([]),
     [selected, setSelected] = useState(''),
@@ -27,7 +26,7 @@ export function MemorySuggestions({ saved }: { saved: () => Promise<void> }) {
   );
   const current = suggestions.find((item) => item.key === selected);
   async function refresh() {
-    setTasks((await request<{ tasks: Task[] }>('overview')).tasks);
+    setTasks((await toolsRequest<{ tasks: Task[] }>('overview')).tasks);
   }
   async function run(fn: () => Promise<void>) {
     setBusy(true);
@@ -116,7 +115,7 @@ export function MemorySuggestions({ saved }: { saved: () => Promise<void> }) {
             disabled={busy || !title.trim() || !body.trim()}
             onClick={() =>
               void run(async () => {
-                await request('memory-accept', {
+                await toolsRequest('memory-accept', {
                   id: current.task.task_id,
                   value: { candidate_id: current.candidate.candidate_id, kind, title, body },
                 });

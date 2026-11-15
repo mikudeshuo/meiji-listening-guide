@@ -1,12 +1,11 @@
-import { createHash } from 'node:crypto';
 import { lstat, readFile, readdir, realpath } from 'node:fs/promises';
 import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path';
 import { z } from 'zod';
 import type { MediaJob } from '../shared/media';
 import { mediaOptions } from './media-options';
 import { biliMediaInput } from './media-bili';
+import { sha256 } from './digest';
 
-const hash = (text: string) => createHash('sha256').update(text).digest('hex');
 const id = z.string().regex(/^[a-f0-9]{32}$/);
 const recordSchema = z.object({
   id,
@@ -76,7 +75,7 @@ async function jsonFile(path: string, max = 1024 * 1024) {
   if (!info.isFile() || info.isSymbolicLink() || info.size > max)
     throw new Error('旧下载记录文件无效');
   const text = await readFile(path, 'utf8');
-  return { value: JSON.parse(text), hash: hash(text) };
+  return { value: JSON.parse(text), hash: sha256(text) };
 }
 
 /** A read-only view of the original Python queue. Never upgrades markers or starts old workers. */
@@ -91,7 +90,7 @@ export class LegacyDownloads {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       normalized = kb.toLowerCase();
     }
-    return 'kbr_' + hash(JSON.stringify(['kbr', normalized])).slice(0, 32);
+    return 'kbr_' + sha256(JSON.stringify(['kbr', normalized])).slice(0, 32);
   }
   private async base() {
     const records = await checkedDirectory(join(this.root, 'records'));

@@ -5,6 +5,7 @@ import type { PracticeSet, PracticeQuestion } from '../../shared/types';
 import { questionOptions } from '../../shared/practice';
 import { StudyIcon } from './StudyIcon';
 import { IdentityAvatar } from './Identity';
+import { invoke } from './ipc';
 type Group = 'past' | 'extended' | 'generated';
 type Actions = {
   disabled: boolean;
@@ -228,7 +229,7 @@ function Question({
               href={q.answerSourceUrl}
               onClick={(e) => {
                 e.preventDefault();
-                void window.assistant.invoke('external', { url: q.answerSourceUrl });
+                void invoke('external', { url: q.answerSourceUrl });
               }}
             >
               查看答案来源

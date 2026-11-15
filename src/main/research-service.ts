@@ -1,6 +1,5 @@
 import { lstat, mkdir, readFile, realpath, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { NativeResearchStore } from './research-store';
 import { NativeKnowledgeStore } from './knowledge-store';
@@ -11,6 +10,7 @@ import { NativeResearchNotes } from './research-notes';
 import { NativeResearchWorkflows } from './research-workflow';
 import { NativeResearchMcp } from './research-mcp';
 import { NativeImService } from './im-service';
+import { sha256 } from './digest';
 const op = z.string().regex(/^[a-f0-9]{32}$/);
 /** Staged native tools dispatcher. Unimplemented channels are errors, never empty success receipts. */
 export class NativeResearchService {
@@ -258,7 +258,7 @@ export class NativeResearchService {
       const item = await lstat(path);
       if (!item.isFile() || item.isSymbolicLink()) throw new Error('研究导出文件无效');
     }
-    const hash = (value: string) => createHash('sha256').update(value).digest('hex');
+    const hash = (value: string) => sha256(value);
     if (hash(await readFile(path, 'utf8')) !== hash(text))
       throw new Error('已有研究成果被修改，保留当前文件');
     return path;

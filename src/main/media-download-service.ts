@@ -1,5 +1,4 @@
 import { LegacyDownloads } from './media-legacy';
-import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { NativePlatformCatalog } from './media-platforms';
 import type { NativeMediaSource } from './media-source';
@@ -11,6 +10,7 @@ import type { BiliResources } from './bili-resources';
 import type { MediaCatalog, MediaJob } from '../shared/media';
 import { z } from 'zod';
 import { NativeMediaAuth } from './media-auth';
+import { hexId } from './digest';
 const idSchema = z.string().regex(/^[a-f0-9]{32}$/);
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 /** Queue control remains responsive while one native download runs in the background. */
@@ -124,7 +124,7 @@ export class NativeDownloadService {
       if (!('identity' in result)) return result;
       for (const [key, item] of this.tokens) if (item.expires < Date.now()) this.tokens.delete(key);
       if (this.tokens.size >= 200) this.tokens.delete(this.tokens.keys().next().value!);
-      const token = randomUUID().replaceAll('-', '');
+      const token = hexId();
       this.tokens.set(token, { source: result, expires: Date.now() + 15 * 60000 });
       return { ...result.catalog, token } satisfies MediaCatalog;
     }

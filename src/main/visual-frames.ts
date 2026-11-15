@@ -1,16 +1,10 @@
 import { nativeImage } from 'electron';
 import { mediaCommand } from './media-command';
-import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
 import { mkdir, lstat, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import { extname, join, resolve, sep } from 'node:path';
 import { z } from 'zod';
+import { sha256File } from './digest';
 
-async function digest(path: string) {
-  const hash = createHash('sha256');
-  for await (const bytes of createReadStream(path)) hash.update(bytes);
-  return hash.digest('hex');
-}
 const requestSchema = z.object({
   id: z.string().regex(/^[a-f0-9]{32}$/),
   path: z.string().min(1),
@@ -90,7 +84,7 @@ export class NativeVisualFrames {
       const source = resolve(request.path),
         item = await lstat(source);
       if (item.isSymbolicLink() || !item.isFile()) throw new Error('所选源文件不可用');
-      const hash = await digest(source);
+      const hash = await sha256File(source);
       if (hash !== request.expectedHash) throw new Error('原文件已改变，请重新建立任务');
       const directory = join(this.root, 'native-visual', request.id);
       await mkdir(directory, { recursive: true });
@@ -118,7 +112,7 @@ export class NativeVisualFrames {
             })
             .toPNG(),
         );
-        frames.push({ path, time: 0, hash: await digest(path) });
+        frames.push({ path, time: 0, hash: await sha256File(path) });
       } else {
         const metadata = JSON.parse(
           await this.command(
@@ -212,11 +206,11 @@ export class NativeVisualFrames {
             controller.signal,
           );
           if (nativeImage.createFromPath(path).isEmpty()) throw new Error('截取的画面无法读取');
-          frames.push({ path, time, hash: await digest(path) });
+          frames.push({ path, time, hash: await sha256File(path) });
         }
       }
       controller.signal.throwIfAborted();
-      if ((await digest(source)) !== hash) throw new Error('提取期间源文件改变，请重新选择');
+      if ((await sha256File(source)) !== hash) throw new Error('提取期间源文件改变，请重新选择');
       const result: Capture = {
         id: request.id,
         source,

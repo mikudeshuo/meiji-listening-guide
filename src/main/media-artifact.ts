@@ -1,13 +1,8 @@
-import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { sha256File } from './digest';
 import { lstat, readFile, rename, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
-export async function mediaFileHash(path: string) {
-  const hash = createHash('sha256');
-  for await (const bytes of createReadStream(path)) hash.update(bytes);
-  return hash.digest('hex');
-}
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
 const reservation = z
   .object({
@@ -101,7 +96,7 @@ export class OwnedMediaArtifact {
         proof.owner !== owner.owner ||
         proof.plan !== this.plan ||
         proof.bytes !== file.size ||
-        proof.hash !== (await mediaFileHash(this.path))
+        proof.hash !== (await sha256File(this.path))
       )
         throw new Error('已有待发布成果被修改或缺失，原文件保留');
       this.owner = owner;
@@ -138,7 +133,7 @@ export class OwnedMediaArtifact {
       owner: this.owner.owner,
       plan: this.plan,
       bytes: file.size,
-      hash: await mediaFileHash(this.path),
+      hash: await sha256File(this.path),
     };
     if (await exists(this.proof)) {
       const prior = receipt.parse(await json(this.proof));

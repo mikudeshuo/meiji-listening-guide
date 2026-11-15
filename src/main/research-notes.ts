@@ -1,11 +1,10 @@
-import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, lstat, readFile, realpath, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import { NativeResearchStore } from './research-store';
 import { NativeResearchEngine } from './research-engine';
-const hash = (text: string) => createHash('sha256').update(text).digest('hex'),
-  op = z.string().regex(/^[a-f0-9]{32}$/),
+import { hexId, sha256 } from './digest';
+const op = z.string().regex(/^[a-f0-9]{32}$/),
   sha = z.string().regex(/^[a-f0-9]{64}$/);
 type Note = {
   receipt: { note_id: string; title: string; body_sha256: string; created_at: string };
@@ -30,7 +29,7 @@ export class NativeResearchNotes {
         binding: source.binding,
         hash: source.sourceHash,
       })),
-      sourceDigest = hash(JSON.stringify(sources)),
+      sourceDigest = sha256(JSON.stringify(sources)),
       markdown =
         '# ' +
         task.question +
@@ -49,7 +48,7 @@ export class NativeResearchNotes {
     return {
       kb_root_id: this.store.rootId,
       task_id: id,
-      note_sha256: hash(markdown),
+      note_sha256: sha256(markdown),
       sources_sha256: sourceDigest,
       markdown,
     };
@@ -65,12 +64,12 @@ export class NativeResearchNotes {
       value.sources_sha256 !== preview.sources_sha256
     )
       throw new Error('预览之后研究内容或来源已改变，请重新预览');
-    const operation = hash(JSON.stringify(['save-research-note', id, value])).slice(0, 32);
+    const operation = sha256(JSON.stringify(['save-research-note', id, value])).slice(0, 32);
     const result = this.store.operation(operation, { id, value }, () => {
       const task = this.engine.verifyResult(id),
         note: Note = {
           receipt: {
-            note_id: randomUUID().replaceAll('-', ''),
+            note_id: hexId(),
             title: task.question,
             body_sha256: preview.note_sha256,
             created_at: new Date().toISOString(),
@@ -90,7 +89,7 @@ export class NativeResearchNotes {
   read(id: string): Note {
     op.parse(id);
     const note = this.store.read<Note>('note', id);
-    if (note.receipt.note_id !== id || note.receipt.body_sha256 !== hash(note.markdown))
+    if (note.receipt.note_id !== id || note.receipt.body_sha256 !== sha256(note.markdown))
       throw new Error('笔记正文与保存回执不一致，原记录保留');
     return note;
   }
@@ -133,8 +132,8 @@ export class NativeResearchNotes {
         ...prior,
         receipt: {
           ...prior.receipt,
-          note_id: randomUUID().replaceAll('-', ''),
-          body_sha256: hash(value.markdown),
+          note_id: hexId(),
+          body_sha256: sha256(value.markdown),
           created_at: new Date().toISOString(),
         },
         markdown: value.markdown,
@@ -201,7 +200,7 @@ export class NativeResearchNotes {
       const item = await lstat(path);
       if (!item.isFile() || item.isSymbolicLink()) throw new Error('笔记导出目标无效');
     }
-    if (hash(await readFile(path, 'utf8')) !== note.receipt.body_sha256)
+    if (sha256(await readFile(path, 'utf8')) !== note.receipt.body_sha256)
       throw new Error('导出文件已被修改，保留当前文件');
     return path;
   }

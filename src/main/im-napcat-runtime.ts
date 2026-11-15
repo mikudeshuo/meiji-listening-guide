@@ -1,11 +1,12 @@
 import JSZip from 'jszip';
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { createServer } from 'node:net';
 import { readFile, writeFile, mkdir, lstat, realpath, rename, rm } from 'node:fs/promises';
 import { join, resolve, dirname, sep } from 'node:path';
 import { NativeWindowsJob, windowsProtect } from './windows-native';
 import { imLocalJson } from './im-loopback';
 import { z } from 'zod';
+import { sha256 } from './digest';
 const version = '4.18.37',
   archiveSha = '05c79761361321f6af4358aef92f80a7f8e319b6459c260ebf9a159615e96fe4';
 const secretsSchema = z.object({
@@ -15,7 +16,6 @@ const secretsSchema = z.object({
   onebot_token: z.string().regex(/^[a-f0-9]{64}$/),
 });
 export type NativeNapcatSecrets = z.infer<typeof secretsSchema>;
-const sha = (data: Buffer) => createHash('sha256').update(data).digest('hex');
 async function freePort() {
   const server = createServer();
   await new Promise<void>((resolve, reject) => {
@@ -78,7 +78,7 @@ export class NativeNapcatRuntime {
     const bytes = await readFile(
       join(this.resources, 'knowledge/vendor/NapCat.Shell.Windows.Node.zip'),
     );
-    if (sha(bytes) !== archiveSha) throw new Error('QQ 组件压缩包校验失败');
+    if (sha256(bytes) !== archiveSha) throw new Error('QQ 组件压缩包校验失败');
     const zip = await JSZip.loadAsync(bytes),
       entries = Object.values(zip.files);
     if (entries.length > 20000) throw new Error('QQ 组件文件数量无效');
@@ -154,8 +154,8 @@ export class NativeNapcatRuntime {
       const original = zip.file(name);
       if (!original) throw new Error('QQ 组件缺少必要文件');
       if (
-        sha(await readFile(await this.owned(join(target, name)))) !==
-        sha(await original.async('nodebuffer'))
+        sha256(await readFile(await this.owned(join(target, name)))) !==
+        sha256(await original.async('nodebuffer'))
       )
         throw new Error('QQ 组件执行文件已改变');
     }
@@ -263,7 +263,7 @@ export class NativeNapcatRuntime {
           const response = await imLocalJson(
             'http://127.0.0.1:' + value.webui_port,
             '/api/auth/login',
-            { hash: sha(Buffer.from(value.webui_token + '.napcat')) },
+            { hash: sha256(Buffer.from(value.webui_token + '.napcat')) },
             '',
             AbortSignal.timeout(2000),
           );

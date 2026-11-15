@@ -1,13 +1,12 @@
 import Database from 'better-sqlite3';
-import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { readFile, readdir, lstat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { z } from 'zod';
 import type { KnowledgeEntry, KnowledgeHit, KnowledgeSearch } from '../shared/knowledge';
+import { hexId, sha256 } from './digest';
 
 const sourceId = z.string().regex(/^(?:BV[0-9A-Za-z]{10}|LV(?:[a-f0-9]{8}|[a-f0-9]{64}))$/);
-const sha = (text: string) => createHash('sha256').update(text).digest('hex');
 export const nativeClassificationOptions = {
   type: [
     '科技',
@@ -122,7 +121,8 @@ export class NativeKnowledgeStore {
     const record = entry.classification as
       { selection?: KnowledgeEntry['classification']; input_digest?: string } | undefined;
     const validClassification =
-      record?.input_digest === sha(JSON.stringify([entry.title, entry.duration || 0, entry.text]));
+      record?.input_digest ===
+      sha256(JSON.stringify([entry.title, entry.duration || 0, entry.text]));
     return {
       bvid: entry.bvid,
       title: entry.title,
@@ -154,7 +154,7 @@ export class NativeKnowledgeStore {
     };
   }
   generation(locator: string) {
-    const row = this.get('LV' + sha(locator));
+    const row = this.get('LV' + sha256(locator));
     return row?.source_locator === locator ? row.generation_id : null;
   }
   read(id: string) {
@@ -165,7 +165,7 @@ export class NativeKnowledgeStore {
   classificationRead(id: string) {
     const entry = this.get(id);
     if (!entry) throw new Error('资料已删除');
-    const token = randomUUID().replaceAll('-', '');
+    const token = hexId();
     if (this.drafts.size >= 100) this.drafts.delete(this.drafts.keys().next().value!);
     this.drafts.set(token, { id, generation: entry.generation_id, digest: entry.content_hash });
     return {
@@ -192,7 +192,7 @@ export class NativeKnowledgeStore {
         const classification = {
           selection,
           method: 'manual',
-          input_digest: sha(JSON.stringify([entry.title, entry.duration || 0, entry.text])),
+          input_digest: sha256(JSON.stringify([entry.title, entry.duration || 0, entry.text])),
           classified_from_generation: entry.generation_id,
           reason: '用户在原生界面核对并保存',
         };
@@ -219,7 +219,7 @@ export class NativeKnowledgeStore {
       .all() as StoredChunk[];
   }
   inventoryDigest() {
-    return sha(JSON.stringify(this.inventory().map((row) => [row.evidence_id, row.digest])));
+    return sha256(JSON.stringify(this.inventory().map((row) => [row.evidence_id, row.digest])));
   }
   vectorStatus() {
     const active = this.db
@@ -335,9 +335,9 @@ export class NativeKnowledgeStore {
     if (!request.text.trim()) throw new Error('资料文字为空');
     return this.db
       .transaction(() => {
-        const id = 'LV' + sha(request.locator),
+        const id = 'LV' + sha256(request.locator),
           prior = this.get(id),
-          textHash = sha(request.text);
+          textHash = sha256(request.text);
         if (
           prior &&
           prior.title === request.title &&
@@ -362,8 +362,8 @@ export class NativeKnowledgeStore {
           source_locator: request.locator,
           sourceHash: request.sourceHash,
           sourceMethod: request.sourceMethod,
-          generation_id: 'gen_' + randomUUID().replaceAll('-', ''),
-          source_revision_id: 'rev_' + randomUUID().replaceAll('-', ''),
+          generation_id: 'gen_' + hexId(),
+          source_revision_id: 'rev_' + hexId(),
           content_hash: textHash,
           source: request.origin,
           source_kind: 'local_text_v1',
@@ -382,16 +382,15 @@ export class NativeKnowledgeStore {
       chunks.push({
         evidence_id:
           'evi_' +
-          sha(JSON.stringify(['native-kb-v1', entry.bvid, entry.source_revision_id, index])).slice(
-            0,
-            32,
-          ),
+          sha256(
+            JSON.stringify(['native-kb-v1', entry.bvid, entry.source_revision_id, index]),
+          ).slice(0, 32),
         source_id: entry.bvid,
         generation_id: entry.generation_id,
         source_revision_id: entry.source_revision_id,
         chunk_index: index,
         content,
-        digest: sha(content),
+        digest: sha256(content),
         locator: entry.source_locator,
       });
     }
@@ -429,7 +428,7 @@ export class NativeKnowledgeStore {
     if (
       entry.generation_id !== row.generation_id ||
       entry.source_revision_id !== row.source_revision_id ||
-      sha(row.content) !== row.digest
+      sha256(row.content) !== row.digest
     )
       throw new Error('引用来源已改变，请重新检索');
     return {
@@ -579,7 +578,7 @@ export class NativeKnowledgeStore {
         if (!info.isFile() || info.isSymbolicLink() || info.size > 12000000)
           throw new Error('旧知识库文件不可读取');
         const raw = await readFile(path, 'utf8');
-        observed.set(path, sha(raw));
+        observed.set(path, sha256(raw));
         return JSON.parse(raw) as Record<string, unknown>;
       };
       for (const published of catalog) {
@@ -598,7 +597,7 @@ export class NativeKnowledgeStore {
           entry.source_locator !== published.source_locator ||
           entry.source_kind !== published.source_kind ||
           entry.content_hash !== published.content_hash ||
-          sha(entry.text) !== published.content_hash ||
+          sha256(entry.text) !== published.content_hash ||
           entry.savedAt !== published.published_at ||
           Array.from(entry.text).length !== entry.textLength
         )
@@ -621,7 +620,7 @@ export class NativeKnowledgeStore {
               ? `${entry.bvid}_meta.json`
               : `${entry.bvid}_${member.chunk_index}.json`,
           );
-          const evidenceHash = sha(
+          const evidenceHash = sha256(
             JSON.stringify([
               'evi',
               published.kb_root_id,
@@ -638,7 +637,7 @@ export class NativeKnowledgeStore {
             payload.source_revision_id !== entry.source_revision_id ||
             member.source_revision_id !== entry.source_revision_id ||
             payload.chunkIndex !== member.chunk_index ||
-            sha(payload.content) !== member.content_digest ||
+            sha256(payload.content) !== member.content_digest ||
             payload.title !== entry.title ||
             payload.source_locator !== entry.source_locator ||
             (member.chunk_index === -1
@@ -663,7 +662,7 @@ export class NativeKnowledgeStore {
         snapshots.push({ entry, chunks });
       }
       for (const [path, hash] of observed)
-        if (sha(await readFile(path, 'utf8')) !== hash)
+        if (sha256(await readFile(path, 'utf8')) !== hash)
           throw new Error('迁移期间旧知识库资料已改变，请重新读取');
       if (
         JSON.stringify(legacy.prepare('SELECT * FROM kb_generation_catalog').all()) !==

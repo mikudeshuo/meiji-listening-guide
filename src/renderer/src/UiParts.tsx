@@ -1,8 +1,7 @@
 import { type ReactNode } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-export const invoke = <T,>(action: string, args?: unknown) =>
-  window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 export const basename = (p: string) => p.split(/[\\/]/).at(-1) || p;
 export function Modal({
   title,

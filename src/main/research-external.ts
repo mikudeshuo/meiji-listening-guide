@@ -1,8 +1,8 @@
-import { createHash } from 'node:crypto';
 import { decodeHTML } from 'entities';
 import { SaxesParser } from 'saxes';
 import { z } from 'zod';
 import { boundedPublicText, publicHttpResponse, publicHttps } from './public-http';
+import { sha256Json } from './digest';
 export type ExternalEvidence = {
   provider: 'crossref' | 'semantic' | 'arxiv' | 'web';
   title: string;
@@ -27,7 +27,6 @@ export function externalEvidenceText(source: ExternalEvidence) {
   );
 }
 type Exchange = typeof publicHttpResponse;
-const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function plain(input: string) {
   return decodeHTML(
     input.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ').replace(/<[^>]*>/g, ' '),
@@ -47,7 +46,7 @@ function evidence(
   text = plain(text).slice(0, 6000);
   if (!title) throw new Error('外部检索返回空标题');
   const value = { provider, title, url, text, scope, obtainedAt: new Date().toISOString() };
-  return { ...value, sha256: hash(value) };
+  return { ...value, sha256: sha256Json(value) };
 }
 /** Opt-in, bounded public queries. Saved search snippets and abstracts never imply full-paper reading. */
 export class NativeResearchExternal {
@@ -284,7 +283,7 @@ export class NativeResearchExternal {
     for (const row of rows) {
       const { sha256, ...value } = row;
       publicHttps(row.url);
-      if (hash(value) !== sha256) throw new Error('外部来源快照校验失败');
+      if (sha256Json(value) !== sha256) throw new Error('外部来源快照校验失败');
     }
   }
 }

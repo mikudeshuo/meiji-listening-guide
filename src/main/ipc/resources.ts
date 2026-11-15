@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { dialog, shell, nativeImage } from 'electron';
 import { bilibiliUrl } from '../video-policy';
-import { createHash } from 'node:crypto';
 import { libraryDirectory, folderName } from '../library';
 import { join } from 'node:path';
 import { readFile, writeFile, lstat } from 'node:fs/promises';
 import type { ApplicationContext } from '../main';
 import type { IpcHandler } from './handler';
 import { biliQrImage } from '../bili-qr';
+import { sha256 } from '../digest';
 export function createResourcesHandler(
   context: Pick<
     ApplicationContext,
@@ -215,7 +215,7 @@ export function createResourcesHandler(
               .string()
               .max(100)
               .parse(object.category || '观众讨论');
-          const sourceHash = createHash('sha256').update(result.text).digest('hex'),
+          const sourceHash = sha256(result.text),
             expectedGeneration = await knowledge.generation(locator);
           const receipt = await knowledge.request('import', {
             text: result.text,

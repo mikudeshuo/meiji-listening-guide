@@ -1,6 +1,5 @@
-import { createHash } from 'node:crypto';
 import { NativeResearchStore } from './research-store';
-const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+import { sha256, sha256Json } from './digest';
 export type ResearchContext = {
   channels: string[];
   conversation?: { id: string; revision: number };
@@ -34,7 +33,7 @@ export class NativeResearchContext {
           id: questionRow.question_id,
           title: '练习题干（未读取答案、作答或成绩）',
           text: questionRow.question,
-          version: digest(questionRow),
+          version: sha256Json(questionRow),
         });
     if (channels.includes('memory'))
       for (const row of this.store
@@ -45,7 +44,7 @@ export class NativeResearchContext {
           id: row.memory_id,
           title: row.title,
           text: row.body,
-          version: digest(row),
+          version: sha256Json(row),
         });
     if (channels.includes('notes'))
       for (const note of this.store.list<{
@@ -54,14 +53,14 @@ export class NativeResearchContext {
         lifecycle: { state: string; revision: number };
       }>('note')) {
         if (note.lifecycle.state !== 'active') continue;
-        if (createHash('sha256').update(note.markdown).digest('hex') !== note.receipt.body_sha256)
+        if (sha256(note.markdown) !== note.receipt.body_sha256)
           throw new Error('已保存笔记校验失败，未发送研究');
         rows.push({
           kind: 'note',
           id: note.receipt.note_id,
           title: note.receipt.title,
           text: note.markdown.slice(0, 12000),
-          version: digest(note),
+          version: sha256Json(note),
         });
       }
     if (channels.includes('conversations') && conversation) {
@@ -75,17 +74,14 @@ export class NativeResearchContext {
         answerHash?: string;
       }[]) {
         if (task.task_id === excludedTask || task.status !== 'completed' || !task.note) continue;
-        if (
-          task.answerHash &&
-          createHash('sha256').update(task.note).digest('hex') !== task.answerHash
-        )
+        if (task.answerHash && sha256(task.note) !== task.answerHash)
           throw new Error('会话回答与保存回执不符');
         rows.push({
           kind: 'conversation',
           id: task.task_id,
           title: task.question,
           text: task.note.slice(0, 12000),
-          version: digest(task),
+          version: sha256Json(task),
         });
       }
       for (const [index, turn] of (current.turns as Record<string, unknown>[]).entries()) {
@@ -101,7 +97,7 @@ export class NativeResearchContext {
             id: 'turn-' + String(turn.turn_id || index),
             title: current.title,
             text: text.slice(0, 12000),
-            version: digest(turn),
+            version: sha256Json(turn),
           });
       }
     }
@@ -120,10 +116,10 @@ export class NativeResearchContext {
       budget -= text.length;
       return [{ ...row, text }];
     });
-    return { channels, conversation, excludedTask, rows: bounded, digest: digest(bounded) };
+    return { channels, conversation, excludedTask, rows: bounded, digest: sha256Json(bounded) };
   }
   verify(snapshot: ResearchContext, _question: string) {
-    if (digest(snapshot.rows) !== snapshot.digest) throw new Error('研究上下文回执无效');
+    if (sha256Json(snapshot.rows) !== snapshot.digest) throw new Error('研究上下文回执无效');
     const conversation = snapshot.conversation
       ? this.store.conversation(snapshot.conversation.id)
       : undefined;
@@ -151,7 +147,7 @@ export class NativeResearchContext {
             (turn, index) =>
               'turn-' + String((turn as Record<string, unknown>).turn_id || index) === row.id,
           );
-      if (!current || digest(current) !== row.version)
+      if (!current || sha256Json(current) !== row.version)
         throw new Error('研究期间记忆、笔记或历史问答已改变，请重新研究');
     }
   }

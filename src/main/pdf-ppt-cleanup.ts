@@ -1,8 +1,7 @@
 import { readFile, lstat, realpath, unlink } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
-import { createHash } from 'node:crypto';
+import { sha256 } from './digest';
 
-export const fileHash = (buffer: Buffer) => createHash('sha256').update(buffer).digest('hex');
 export function verifyGeneratedPdf(data: Buffer, expectedPages: number) {
   const text = data.toString('latin1'),
     end = /startxref\n(\d+)\n%%EOF\n$/.exec(text);
@@ -46,7 +45,7 @@ export async function deleteConvertedPpt(
     resolve(await realpath(source)) !== resolve(source)
   )
     throw new Error('PPT 是链接或路径已改变，已保留');
-  if (fileHash(await readFile(source)) !== sourceHash)
+  if (sha256(await readFile(source)) !== sourceHash)
     throw new Error('PPT 在分析后发生变化，已保留');
   // Persist associations before deleting the exact analyzed file. Never scan by
   // filename prefix or delete unrelated course files.

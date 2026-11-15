@@ -1,9 +1,8 @@
 import { readFile, writeFile, mkdir, rename, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createHash, randomUUID } from 'node:crypto';
-import { createReadStream } from 'node:fs';
 import { z } from 'zod';
 import type { MediaBackend } from './media';
+import { hexId, sha256, sha256File } from './digest';
 export type VisualFrame = {
   path: string;
   time: number;
@@ -25,12 +24,7 @@ export type VisualTask = {
   cleaned?: boolean;
   preparation?: { cap: number; policy: string; status: string; error?: string };
 };
-const digest = (bytes: Buffer | string) => createHash('sha256').update(bytes).digest('hex');
-async function fileDigest(path: string) {
-  const hash = createHash('sha256');
-  for await (const chunk of createReadStream(path)) hash.update(chunk);
-  return hash.digest('hex');
-}
+const digest = (bytes: Buffer | string) => sha256(bytes);
 export class VisualTasks {
   constructor(
     private root: string,
@@ -59,9 +53,9 @@ export class VisualTasks {
     signal?: AbortSignal,
   ) {
     const task: VisualTask = {
-      id: randomUUID().replaceAll('-', ''),
+      id: hexId(),
       source: path,
-      sourceHash: await fileDigest(path),
+      sourceHash: await sha256File(path),
       duration: 0,
       frames: [],
       gaps: [],
@@ -79,7 +73,7 @@ export class VisualTasks {
     if (task.connection !== connection) throw new Error('连接已变化，请重新建立任务');
     if (!task.preparation) throw new Error('任务没有待提取记录');
     if (task.frames.length) return task;
-    if ((await fileDigest(task.source)) !== task.sourceHash)
+    if ((await sha256File(task.source)) !== task.sourceHash)
       throw new Error('原文件已改变，请重新建立任务');
     const cancel = () => {
       void this.media.request('visual-cancel', { id }).catch(() => {});
@@ -128,7 +122,7 @@ export class VisualTasks {
       throw new Error('识别连接已有改变，请用当前配置新建任务；旧成果保留');
     if (!task.frames.length) throw new Error('请先完成画面提取');
     if (task.output) {
-      if ((await fileDigest(task.output)) !== task.outputHash)
+      if ((await sha256File(task.output)) !== task.outputHash)
         throw new Error('识别成果已改变，保留当前文件，请重新建立任务');
       if (!task.cleaned) {
         await this.media.request('visual-cleanup', { id });
@@ -138,7 +132,7 @@ export class VisualTasks {
       return task;
     }
     const current = async () => {
-      if ((await fileDigest(task.source)) !== task.sourceHash)
+      if ((await sha256File(task.source)) !== task.sourceHash)
         throw new Error('源文件已经改变，请新建画面识别任务');
     };
     await current();

@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import { windowsProtect } from './windows-native';
 import type { NativeMediaOptions } from './media-options';
+import { hexId } from './digest';
 const key = z.string().regex(/^[a-f0-9]{32}$/);
 const profile = z
   .object({
@@ -168,7 +169,7 @@ export class NativeMediaAuth {
     return this.mutate((rows) => {
       if (request.id && !rows[request.id]) throw new Error('所选登录档案不存在');
       if (!request.id && Object.keys(rows).length >= 50) throw new Error('最多保存 50 个站点档案');
-      const id = request.id || randomUUID().replaceAll('-', ''),
+      const id = request.id || hexId(),
         row = {
           id,
           name: request.name,

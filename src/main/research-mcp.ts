@@ -1,8 +1,8 @@
 import Ajv, { type AnySchema } from 'ajv';
-import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { NativeResearchStore } from './research-store';
 import { NativeMcpSession, mcpEndpoint } from './research-mcp-transport';
+import { hexId, sha256Json } from './digest';
 const op = z.string().regex(/^[a-f0-9]{32}$/),
   toolName = z.string().regex(/^[A-Za-z0-9_.-]{1,128}$/);
 type Tool = {
@@ -32,7 +32,6 @@ const resultSchema = z.object({
   usage: z.string(),
 });
 export type NativeMcpResult = z.infer<typeof resultSchema>;
-const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 function checkedSchema(schema: unknown) {
   const value = z.record(z.string(), z.unknown()).parse(schema);
   if (value.type !== 'object' || Buffer.byteLength(JSON.stringify(value)) > 8192)
@@ -206,7 +205,7 @@ export class NativeResearchMcp {
         )
           throw new Error('请先读取清单并选择已声明只读的工具');
         const server: Server = {
-          id: old?.id || randomUUID().replaceAll('-', ''),
+          id: old?.id || hexId(),
           name: edit.name,
           endpoint,
           enabled: edit.enabled,
@@ -278,7 +277,7 @@ export class NativeResearchMcp {
       revision: snapshot.revision,
       items: snapshot.tools.map((tool) => ({ server_id: tool.server_id, tool: tool.name })),
     });
-    if (hash(current) !== hash(snapshot)) throw new Error('MCP 工具定义已改变');
+    if (sha256Json(current) !== sha256Json(snapshot)) throw new Error('MCP 工具定义已改变');
   }
   async call(
     input: {
@@ -310,7 +309,7 @@ export class NativeResearchMcp {
         tool: input.tool,
         args: input.arguments,
       },
-      signature = hash(identity),
+      signature = sha256Json(identity),
       previous = this.store.db
         .prepare('SELECT 1 FROM research_records WHERE kind=? AND id=?')
         .get('mcp-call', input.op);
@@ -334,8 +333,8 @@ export class NativeResearchMcp {
       const fresh = tools(await session.tools(signal)).find((tool) => tool.name === selected.name);
       if (
         !fresh?.read_only_declared ||
-        hash(fresh) !==
-          hash({
+        sha256Json(fresh) !==
+          sha256Json({
             name: selected.name,
             description: selected.description,
             input_schema: selected.input_schema,

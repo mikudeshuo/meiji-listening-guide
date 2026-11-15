@@ -1,12 +1,13 @@
 import { nativeImage } from 'electron';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, posix, basename } from 'node:path';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import JSZip from 'jszip';
 import { imagePdf } from './image-pdf';
 import { z } from 'zod';
 import type { CodexClient } from './codex';
 import type { PptExtractPage, PptExtractReview } from '../shared/ppt-extract';
+import { sha256 } from './digest';
 type Crop = PptExtractPage['crop'];
 type Page = {
   page: number;
@@ -193,7 +194,7 @@ export async function readImageDeck(path: string, signal?: AbortSignal): Promise
         return nativeImage.createFromBuffer(stored);
       },
       crop: trimBlackSides(image),
-      hash: createHash('sha256').update(png).digest('hex'),
+      hash: sha256(png),
     });
   }
   if (!pages.some((p) => !p.unavailable))
@@ -236,9 +237,7 @@ export class PptExtractor {
     this.drafts.set(review.id, {
       sourceName: basename(path),
       sourcePath: path,
-      sourceHash: createHash('sha256')
-        .update(await readFile(path))
-        .digest('hex'),
+      sourceHash: sha256(await readFile(path)),
       pages,
       review,
     });
@@ -247,9 +246,7 @@ export class PptExtractor {
     if (extname(path).toLowerCase() !== '.pptx')
       throw new Error('请选择图片型 PPTX；旧版 PPT 请先另存为 PPTX');
     this.progress('正在读取 PPT 图片');
-    const sourceHash = createHash('sha256')
-        .update(await readFile(path))
-        .digest('hex'),
+    const sourceHash = sha256(await readFile(path)),
       pages = await readImageDeck(path, signal),
       decisions: Array<z.infer<typeof analysisSchema>[number]> = [],
       seen = new Map<string, number>();

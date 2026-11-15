@@ -1,11 +1,11 @@
 import { mkdir, readFile, writeFile, rename, readdir } from 'node:fs/promises';
 import { join, resolve, relative, isAbsolute } from 'node:path';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { bilibiliUrl } from './video-policy';
 import { parseSrt } from '../shared/srt';
 import type { SubtitleSyncTask, SubtitleSyncItem } from '../shared/subtitle-sync';
-const hash = (text: string) => createHash('sha256').update(text).digest('hex');
+import { sha256 } from './digest';
 export function subtitleLocator(input: string) {
   const url = new URL(bilibiliUrl(input));
   return `https://www.bilibili.com${url.pathname.replace(/\/$/, '')}/?p=${Number(url.searchParams.get('p') || 1)}`;
@@ -109,7 +109,7 @@ export class SubtitleSync {
     const text = await readFile(path, 'utf8');
     parseSrt(text);
     item.path = path;
-    item.hash = hash(text);
+    item.hash = sha256(text);
     item.sourceMethod = '用户指定 SRT';
     item.status = '等待处理';
     delete item.error;
@@ -139,7 +139,7 @@ export class SubtitleSync {
               throw new Error('同步字幕不在课程资料目录');
             try {
               const text = await readFile(item.path, 'utf8');
-              if (hash(text) === item.hash) {
+              if (sha256(text) === item.hash) {
                 parseSrt(text);
                 srt = text;
               }
@@ -154,7 +154,7 @@ export class SubtitleSync {
               throw new Error('字幕保存校验失败');
             srt = saved.srt;
             item.path = saved.path;
-            item.hash = hash(srt);
+            item.hash = sha256(srt);
             item.sourceMethod = '站内字幕';
             item.status = '等待处理';
             await this.save(task);

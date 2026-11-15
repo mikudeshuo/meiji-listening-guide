@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import type { RuntimeStatus } from '../../shared/runtime';
+import { invoke } from './ipc';
 export function RuntimePanel() {
   const [data, setData] = useState<RuntimeStatus>(),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState('');
-  const refresh = () => window.assistant.invoke<RuntimeStatus>('runtime:status').then(setData);
+  const refresh = () => invoke<RuntimeStatus>('runtime:status').then(setData);
   useEffect(() => {
     void refresh().catch((e) => setError(String(e)));
   }, []);
@@ -13,7 +14,7 @@ export function RuntimePanel() {
     setBusy(true);
     setError('');
     try {
-      const result = await window.assistant.invoke('runtime:install', { id });
+      const result = await invoke('runtime:install', { id });
       if (result) {
         await refresh();
         setNotice('组件已校验并安装，请重启软件后使用。');

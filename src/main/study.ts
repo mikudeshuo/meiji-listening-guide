@@ -1,6 +1,7 @@
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { readFile, writeFile, rename, copyFile, rm } from 'node:fs/promises';
-import { TextbookFiles, fileHash, pdfOperation, type BookInfo } from './textbook-files';
+import { TextbookFiles, pdfOperation, type BookInfo } from './textbook-files';
+import { sha256, sha256File } from './digest';
 import { z } from 'zod';
 import type { Store } from './db';
 import type { Api } from './api';
@@ -45,7 +46,7 @@ export const studyEntries = (db: Store): StudyEntry[] =>
     .prepare('SELECT json FROM study_entries ORDER BY rowid')
     .all()
     .map((row) => studyEntrySchema.parse(JSON.parse((row as { json: string }).json)));
-export const pdfHash = (b: Uint8Array) => createHash('sha256').update(b).digest('hex');
+export const pdfHash = (b: Uint8Array) => sha256(b);
 export class TextbookHighlighter {
   private files = new TextbookFiles();
   private selected = new Map<string, { path: string; hash: string }>();
@@ -65,7 +66,7 @@ export class TextbookHighlighter {
   ) {
     const book = this.selected.get(id);
     if (!book || !this.imageAnalyze) throw new Error('请重新选择教材');
-    const hash = await fileHash(book.path),
+    const hash = await sha256File(book.path),
       doc = await pdfOperation<BookInfo>({ action: 'inspect', path: book.path });
     if (
       first < 1 ||
@@ -137,7 +138,7 @@ export class TextbookHighlighter {
   async select(path: string) {
     const doc = await pdfOperation<BookInfo>({ action: 'inspect', path }),
       id = randomUUID();
-    this.selected.set(id, { path, hash: await fileHash(path) });
+    this.selected.set(id, { path, hash: await sha256File(path) });
     return { id, path, pages: doc.pages };
   }
   async analyze(
@@ -154,7 +155,7 @@ export class TextbookHighlighter {
       throw new Error('该课次尚无课堂原文、PPT 文字或学长学姐资料，请先导入');
     if (Object.values(sources).join('').length > 250000)
       throw new Error('来源资料过长，请先整理本节课对应内容后重试');
-    const hash = await fileHash(book.path);
+    const hash = await sha256File(book.path);
     const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs'),
       task = getDocument({
         url: await this.files.url(book.path),
@@ -287,7 +288,7 @@ export class TextbookHighlighter {
     rows: Highlight[],
     clear = false,
   ) {
-    if ((await fileHash(book.path)) !== expected)
+    if ((await sha256File(book.path)) !== expected)
       throw new Error('教材已被其他程序修改，请重新选择教材后分析');
     const info = await pdfOperation<BookInfo>({ action: 'inspect', path: book.path }),
       resolved = clear ? [] : prioritizedHighlights([...rows, ...info.previous]),
@@ -304,7 +305,7 @@ export class TextbookHighlighter {
         })),
       });
       if (result.pages !== info.pages) throw new Error('保存检查失败，原教材未修改');
-      if ((await fileHash(book.path)) !== expected)
+      if ((await sha256File(book.path)) !== expected)
         throw new Error('教材在保存前发生变化，未覆盖原文件');
       try {
         await copyFile(book.path, book.path + '.划线前备份.pdf', 2);
@@ -312,7 +313,7 @@ export class TextbookHighlighter {
         if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
       }
       await rename(temp, book.path);
-      book.hash = await fileHash(book.path);
+      book.hash = await sha256File(book.path);
       return result;
     } finally {
       await rm(temp, { force: true });

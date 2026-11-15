@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Course, LibraryFile } from '../../shared/types';
 import { FolderNavIcon, TrashIcon } from './ManagementIcons';
+import { invoke } from './ipc';
 export function FileManager({
   busy,
   close,
@@ -24,8 +25,8 @@ export function FileManager({
     [name, setName] = useState('');
   async function load() {
     const [f, c] = await Promise.all([
-      window.assistant.invoke<LibraryFile[]>('library:list'),
-      window.assistant.invoke<Course[]>('courses'),
+      invoke<LibraryFile[]>('library:list'),
+      invoke<Course[]>('courses'),
     ]);
     setFiles(f);
     setCourses(c);
@@ -35,7 +36,7 @@ export function FileManager({
     setWorking(true);
     setError('');
     try {
-      const c = await window.assistant.invoke<Course>('course:create', { name: name.trim() });
+      const c = await invoke<Course>('course:create', { name: name.trim() });
       await load();
       await changed();
       setCourse(c.name);
@@ -55,7 +56,7 @@ export function FileManager({
     setWorking(true);
     setError('');
     try {
-      await window.assistant.invoke('library:delete', { path: pending.path, confirmed: true });
+      await invoke('library:delete', { path: pending.path, confirmed: true });
       setPending(null);
       await load();
       await changed();
@@ -132,7 +133,7 @@ export function FileManager({
           onChange={(e) => setSearch(e.target.value)}
         />
         <button onClick={() => void load().catch((e) => setError(String(e)))}>刷新</button>
-        <button onClick={() => void window.assistant.invoke('library:open')}>打开资料文件夹</button>
+        <button onClick={() => void invoke('library:open')}>打开资料文件夹</button>
       </div>
       <nav className="file-category-tabs">
         {['全部', 'PPT', '语音原文', '笔记', '历年卷'].map((c) => (
@@ -159,9 +160,9 @@ export function FileManager({
               <button
                 aria-label={`打开文件 ${f.name}`}
                 onClick={() =>
-                  void window.assistant
-                    .invoke('library:open-file', { path: f.path })
-                    .catch((e) => setError(String(e)))
+                  void invoke('library:open-file', { path: f.path }).catch((e) =>
+                    setError(String(e)),
+                  )
                 }
               >
                 {/\.pdf$/i.test(f.name) ? '打开 PDF' : '打开'}
@@ -169,9 +170,7 @@ export function FileManager({
             )}
             <button
               onClick={() =>
-                void window.assistant
-                  .invoke('library:reveal', { path: f.path })
-                  .catch((e) => setError(String(e)))
+                void invoke('library:reveal', { path: f.path }).catch((e) => setError(String(e)))
               }
             >
               定位

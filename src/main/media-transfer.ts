@@ -1,8 +1,7 @@
-import { createHash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
 import { lstat, open, readFile, realpath, rename, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
+import { sha256File } from './digest';
 
 type Fetcher = (url: string, init?: RequestInit) => Promise<Response>;
 const checkpointSchema = z
@@ -15,11 +14,6 @@ const checkpointSchema = z
     total: z.number().int().nonnegative().safe().nullable(),
   })
   .strict();
-async function hashFile(path: string) {
-  const hash = createHash('sha256');
-  for await (const chunk of createReadStream(path)) hash.update(chunk);
-  return hash.digest('hex');
-}
 const strongETag = (value: string | null) => (value && /^"[^"\r\n]+"$/.test(value) ? value : '');
 /** Caller supplies an owned task directory and an already validated platform URL.
  * A returned file is still intermediate; the queue must validate final media before publishing it.
@@ -88,7 +82,7 @@ export async function transferMedia(input: {
         old.etag &&
         old.size > 0 &&
         old.size <= max &&
-        (await hashFile(path)) === old.hash
+        (await sha256File(path)) === old.hash
       ) {
         size = old.size;
         total = old.total;
@@ -117,7 +111,7 @@ export async function transferMedia(input: {
       response.headers.get('content-range') === 'bytes */' + size &&
       strongETag(response.headers.get('etag')) === etag
     )
-      return { path, size, hash: await hashFile(path), etag, total };
+      return { path, size, hash: await sha256File(path), etag, total };
     if (!response.ok || !response.body)
       throw new Error(`媒体下载未完成（HTTP ${response.status}）`);
     if (
@@ -181,7 +175,7 @@ export async function transferMedia(input: {
     await handle.sync();
     await handle.close();
     handle = undefined;
-    const hash = await hashFile(path);
+    const hash = await sha256File(path);
     await checkpoint(hash);
     return { path, size, hash, etag, total };
   } catch (error) {
@@ -192,7 +186,7 @@ export async function transferMedia(input: {
         const file = await lstat(path);
         if (file.isFile() && !file.isSymbolicLink()) {
           size = file.size;
-          await checkpoint(await hashFile(path));
+          await checkpoint(await sha256File(path));
         }
       } catch {
         /* Preserve the last valid checkpoint if saving recovery fails. */

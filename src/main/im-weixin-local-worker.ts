@@ -1,7 +1,7 @@
-import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { weixinProcesses, WeixinProcessMemory } from './im-weixin-process';
 import { NativeWeixinReader } from './im-weixin-database';
+import { hexId } from './digest';
 const readers = new Map<string, NativeWeixinReader>(),
   probes = new Map<
     string,
@@ -74,7 +74,7 @@ process.on('message', (message: unknown) => {
           })
           .parse(input),
         reader = new NativeWeixinReader(new WeixinProcessMemory(value.pid, value.created)),
-        token = randomUUID().replaceAll('-', '');
+        token = hexId();
       probes.set(token, {
         connection: value.connection_id,
         revision: value.revision,

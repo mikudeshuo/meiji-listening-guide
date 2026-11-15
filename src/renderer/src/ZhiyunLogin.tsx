@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-const invoke = (action: string, args?: unknown) => window.assistant.invoke(action, args);
+import { invoke } from './ipc';
 export function ZhiyunLogin({
   close,
   exportResources,

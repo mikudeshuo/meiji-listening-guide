@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { invoke } from './ipc';
 type Task = {
   id: string;
   source: string;
@@ -7,7 +8,6 @@ type Task = {
   preparation?: { status: string; error?: string };
   frames: { time: number; status: string; text?: string; error?: string }[];
 };
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
 export function VisualIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">

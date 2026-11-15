@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ImAutomation } from './ImAutomation';
+import { imRequest, invoke, operationId } from './ipc';
 type Connection = {
   id: string;
   name: string;
@@ -32,10 +33,6 @@ type Scope = {
   peer: string;
 };
 type Message = { mid: string; text: string; sender: string; ts: number };
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
-const request = <T,>(action: string, value: unknown = {}) =>
-  invoke<T>('tools:request', { action: 'im', args: { action, value } });
-const op = () => crypto.randomUUID().replaceAll('-', '');
 const states: Record<string, string> = {
   waiting_scan: '等待手机扫码',
   scanned: '已扫码，等待手机确认',
@@ -89,7 +86,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
     };
   };
   async function refresh() {
-    setData(await request('status'));
+    setData(await imRequest('status'));
   }
   async function run(fn: () => Promise<unknown>) {
     setBusy(true);
@@ -121,7 +118,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
     setLogin(next);
     setQr(
       next.has_qr
-        ? await request<string>('qr', {
+        ? await imRequest<string>('qr', {
             operation_id: next.operation_id,
             connection_id: next.connection_id,
             generation: next.generation,
@@ -135,7 +132,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
     generation: login!.generation,
   });
   async function read(older = false) {
-    const result = await request<{ messages: Message[]; next_cursor: unknown }>('read', {
+    const result = await imRequest<{ messages: Message[]; next_cursor: unknown }>('read', {
       ...scope(),
       limit: 50,
       ...(older && cursor ? { cursor } : {}),
@@ -202,7 +199,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
               disabled={busy || !name.trim() || !data}
               onClick={() =>
                 void run(async () => {
-                  const next = await request<Listing>('change', {
+                  const next = await imRequest<Listing>('change', {
                     action: 'create',
                     expected_revision: data!.revision,
                     name,
@@ -241,7 +238,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    await request('change', {
+                    await imRequest('change', {
                       action: 'delete',
                       expected_revision: data!.revision,
                       id: row.id,
@@ -269,8 +266,8 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
               onClick={() =>
                 void run(async () =>
                   showLogin(
-                    await request<Login>('start', {
-                      operation_id: op(),
+                    await imRequest<Login>('start', {
+                      operation_id: operationId(),
                       connection_id: row.id,
                       expected_revision: row.revision,
                     }),
@@ -300,7 +297,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
                     onClick={() =>
                       void run(async () =>
                         showLogin(
-                          await request<Login>('inspect', {
+                          await imRequest<Login>('inspect', {
                             ...operation(),
                             refresh: true,
                             ...(pairCode ? { verify_code: pairCode } : {}),
@@ -314,7 +311,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
                   <button
                     disabled={busy}
                     onClick={() =>
-                      void run(async () => showLogin(await request<Login>('cancel', operation())))
+                      void run(async () => showLogin(await imRequest<Login>('cancel', operation())))
                     }
                   >
                     取消登录
@@ -325,7 +322,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
                       disabled={busy}
                       onClick={() =>
                         void run(async () => {
-                          const result = await request<{ login: Login }>('confirm', {
+                          const result = await imRequest<{ login: Login }>('confirm', {
                             ...operation(),
                             displayed_account: login.account,
                           });
@@ -354,7 +351,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
                 void run(async () =>
                   setProcesses(
                     (
-                      await request<{
+                      await imRequest<{
                         processes: { pid: number; created: number; label: string }[];
                       }>('personal-processes')
                     ).processes,
@@ -371,7 +368,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
                 onClick={() =>
                   void run(async () =>
                     setProbe(
-                      await request('personal-probe', {
+                      await imRequest('personal-probe', {
                         connection_id: row.id,
                         revision: row.revision,
                         pid: item.pid,
@@ -390,7 +387,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    await request('personal-confirm', {
+                    await imRequest('personal-confirm', {
                       connection_id: row.id,
                       revision: row.revision,
                       probe_id: probe.probe_id,
@@ -413,7 +410,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  const result = await request<{ peers: { peer: string; name: string }[] }>(
+                  const result = await imRequest<{ peers: { peer: string; name: string }[] }>(
                     'directory',
                     scope('_directory_'),
                   );
@@ -447,7 +444,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
                     disabled={busy}
                     onClick={() =>
                       void run(async () => {
-                        await request('sync', scope());
+                        await imRequest('sync', scope());
                         await read();
                       })
                     }
@@ -523,9 +520,9 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
                       disabled={busy || !confirm || !text.trim()}
                       onClick={() =>
                         void run(async () => {
-                          const result = await request<{ state: string; operation_id: string }>(
+                          const result = await imRequest<{ state: string; operation_id: string }>(
                             'send',
-                            { ...scope(), operation_id: op(), text, user_confirmed: true },
+                            { ...scope(), operation_id: operationId(), text, user_confirmed: true },
                           );
                           setReceipt(
                             (result.state === 'sent'

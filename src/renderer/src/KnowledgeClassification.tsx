@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { KnowledgeEntry } from '../../shared/knowledge';
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 type Selection = {
   type: string;
   topic: string;

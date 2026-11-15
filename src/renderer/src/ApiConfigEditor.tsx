@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import deepseekIcon from './assets/deepseek.svg';
 import type { ReactNode } from 'react';
 import type { Profile, Settings } from '../../shared/types';
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 export function ApiConfigEditor({
   login,
   value,

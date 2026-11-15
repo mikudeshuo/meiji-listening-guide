@@ -1,8 +1,8 @@
 import Database from 'better-sqlite3';
-import { createHash } from 'node:crypto';
 import { mkdirSync, realpathSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
+import { sha256 } from './digest';
 
 export const discussionLabels = {
   correction: '纠错候选',
@@ -108,12 +108,9 @@ export function canonicalJson(value: unknown): string {
   if (encoded === undefined) throw new Error('讨论证据数据无效');
   return encoded;
 }
-export const discussionDigest = (value: unknown) =>
-  createHash('sha256').update(canonicalJson(value)).digest('hex');
+export const discussionDigest = (value: unknown) => sha256(canonicalJson(value));
 const packRef = (root: string, payload: string) =>
-  createHash('sha256')
-    .update('[' + JSON.stringify(root) + ',' + payload + ']')
-    .digest('hex');
+  sha256('[' + JSON.stringify(root) + ',' + payload + ']');
 const changeSchema = z
   .array(
     z

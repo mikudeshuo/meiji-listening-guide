@@ -5,7 +5,7 @@ import { Discussion } from './Discussion';
 import { BiliBrowse } from './BiliBrowse';
 import type { VideoSeries } from '../../shared/video-ppt';
 import type { SubtitleSyncTask } from '../../shared/subtitle-sync';
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 type Folder = { id: number; title: string; media_count: number };
 type Video = {
   id: number;

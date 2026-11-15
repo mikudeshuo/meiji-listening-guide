@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Profile, Settings } from '../../shared/types';
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 const available = ['deepseek-flash', 'deepseek-v4-pro'];
 export function DeepSeekSettings({
   value,

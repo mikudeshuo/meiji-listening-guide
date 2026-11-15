@@ -5,7 +5,7 @@ import {
   type PptExtractReview,
   type PptExtractPage,
 } from '../../shared/ppt-extract';
-const invoke = <T,>(action: string, args?: unknown) => window.assistant.invoke<T>(action, args);
+import { invoke } from './ipc';
 export function PptExtract({
   visible,
   close,

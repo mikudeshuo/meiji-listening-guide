@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { lstat, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
@@ -6,6 +5,7 @@ import { mediaSponsors, type NativeMediaOptions } from './media-options';
 import type { NativeMediaSource } from './media-source';
 import { boundedMediaResponse } from './media-subtitle-download';
 import { removalTimeline } from './media-timeline';
+import { sha256, sha256Json } from './digest';
 
 const segment = z.object({
   segment: z.tuple([z.number().finite().nonnegative(), z.number().finite().positive()]),
@@ -28,7 +28,6 @@ const receipt = z
     license: z.literal('https://creativecommons.org/licenses/by-nc-sa/4.0/'),
   })
   .strict();
-const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 /** Read-only hash-prefix lookup. This never sends a complete video ID, account cookies or submissions. */
 export async function sponsorBlockPlan(
   source: NativeMediaSource,
@@ -61,7 +60,8 @@ export async function sponsorBlockPlan(
       saved.sourceId !== source.sourceId ||
       saved.duration !== duration ||
       JSON.stringify(saved.categories) !== JSON.stringify(categories) ||
-      saved.sha256 !== hash([saved.sourceId, saved.duration, saved.categories, saved.segments])
+      saved.sha256 !==
+        sha256Json([saved.sourceId, saved.duration, saved.categories, saved.segments])
     )
       throw new Error('片段移除恢复记录已改变，原文件保留');
     rows = saved.segments;
@@ -70,8 +70,7 @@ export async function sponsorBlockPlan(
   }
   if (!rows) {
     const url = new URL(
-      'https://sponsor.ajay.app/api/skipSegments/' +
-        createHash('sha256').update(source.sourceId).digest('hex').slice(0, 4),
+      'https://sponsor.ajay.app/api/skipSegments/' + sha256(source.sourceId).slice(0, 4),
     );
     url.searchParams.set('categories', JSON.stringify(categories));
     url.searchParams.set('actionTypes', '["skip"]');
@@ -113,7 +112,7 @@ export async function sponsorBlockPlan(
       duration,
       categories,
       segments: rows,
-      sha256: hash([source.sourceId, duration, categories, rows]),
+      sha256: sha256Json([source.sourceId, duration, categories, rows]),
       attribution: 'SponsorBlock community / CC BY-NC-SA 4.0',
       source: 'https://sponsor.ajay.app',
       license: 'https://creativecommons.org/licenses/by-nc-sa/4.0/',

@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { NativeResearchStore } from './research-store';
+import { hexId } from './digest';
 const op = z.string().regex(/^[a-f0-9]{32}$/),
   name = z
     .string()
@@ -197,7 +197,7 @@ export class NativeResearchExtensions {
         next.skills = current.skills.filter((s) => s.id !== edit.id);
       }
       if (edit.kind === 'skill') {
-        const id = edit.id || randomUUID().replaceAll('-', '');
+        const id = edit.id || hexId();
         if (edit.id && !current.skills.some((s) => s.id === id)) throw new Error('学习方法不存在');
         if (current.skills.some((s) => s.name === edit.name && s.id !== id))
           throw new Error('学习方法名称已存在');
@@ -285,14 +285,12 @@ export class NativeResearchExtensions {
       else if (/^[!&*\[{>|]/.test(value)) throw new Error('方法头部仅支持普通文本');
       fields[pair[1]] = value;
     }
-    const parsed = skill
-      .omit({ id: true })
-      .parse({
-        name: fields.name,
-        description: fields.description,
-        body: match[2].trim(),
-        enabled: false,
-      });
+    const parsed = skill.omit({ id: true }).parse({
+      name: fields.name,
+      description: fields.description,
+      body: match[2].trim(),
+      enabled: false,
+    });
     return parsed;
   }
 }

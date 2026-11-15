@@ -17,6 +17,7 @@ import { type Settings } from '../../shared/types';
 import { exportFile } from '../exports';
 import type { ApplicationContext } from '../main';
 import type { IpcHandler } from './handler';
+import { resourcesDirectory } from '../paths';
 export function createDesktopHandler(
   context: Pick<
     ApplicationContext,
@@ -441,12 +442,7 @@ export function createDesktopHandler(
                 process.env.LISTENING_ASSISTANT_CODEX_FIXTURE &&
                   process.env.LISTENING_ASSISTANT_DATA
                   ? process.execPath
-                  : join(
-                      app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
-                      'codex',
-                      'bin',
-                      'codex.exe',
-                    ),
+                  : join(resourcesDirectory(), 'codex', 'bin', 'codex.exe'),
                 join(root, 'deepseek-test'),
                 join(root, 'deepseek-workspace'),
                 settings,

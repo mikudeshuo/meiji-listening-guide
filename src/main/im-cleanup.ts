@@ -1,7 +1,6 @@
-import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { NativeImStore, imId, imScope, type NativeImScope } from './im-store';
-const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+import { hexId, sha256Json } from './digest';
 type Preview = {
   scope: NativeImScope;
   hash: string;
@@ -75,13 +74,13 @@ export class NativeImCleanup {
             rows = protectedByTask ? [] : this.rows(scope),
             value: Preview = {
               scope,
-              hash: digest(rows),
+              hash: sha256Json(rows),
               count: rows.length,
               bytes: rows.reduce((sum, row) => sum + Buffer.byteLength(row.text), 0),
               createdAt: Date.now(),
               done: false,
             },
-            previewId = randomUUID().replaceAll('-', '');
+            previewId = hexId();
           this.store.db
             .prepare('INSERT INTO native_im_cleanup VALUES(?,?)')
             .run(previewId, JSON.stringify(value));
@@ -107,7 +106,7 @@ export class NativeImCleanup {
         if (Date.now() - preview.createdAt > 10 * 60000 || this.protected(scope))
           throw new Error('清理预览已过期或出现待办，请重新检查');
         const rows = this.rows(scope);
-        if (digest(rows) !== preview.hash || rows.length !== preview.count)
+        if (sha256Json(rows) !== preview.hash || rows.length !== preview.count)
           throw new Error('预览之后消息已改变，当前未删除');
         const result = this.store.db
           .prepare(

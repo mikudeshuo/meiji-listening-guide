@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { invoke } from './ipc';
 type Video = { bvid: string; title: string; author: string; duration: string; url: string };
 type Listing = { videos: Video[]; page: number; hasMore: boolean };
 export function BiliBrowse({
@@ -17,7 +18,7 @@ export function BiliBrowse({
     setResult(undefined);
     try {
       setResult(
-        await window.assistant.invoke<Listing>('bili-resources:browse', {
+        await invoke<Listing>('bili-resources:browse', {
           kind,
           query: word,
           page,

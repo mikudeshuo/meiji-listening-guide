@@ -2,11 +2,11 @@ import { utilityProcess, type UtilityProcess } from 'electron';
 import { fileURLToPath } from 'node:url';
 import { basename, extname } from 'node:path';
 import { readFile, stat } from 'node:fs/promises';
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { backendRequest, BACKEND_PROTOCOL } from '../shared/backend-protocol';
 import { parseDocument } from './documents';
 import type { KnowledgeList, KnowledgeSearch, KnowledgeHit } from '../shared/knowledge';
+import { sha256 } from './digest';
 
 const replySchema = z.discriminatedUnion('kind', [
   z.object({
@@ -133,7 +133,7 @@ export class KnowledgeBase {
         title,
         text: srt,
         locator: url,
-        sourceHash: createHash('sha256').update(srt).digest('hex'),
+        sourceHash: sha256(srt),
         category,
         origin: 'bilibili-subtitle',
         sourceMethod,
@@ -148,17 +148,13 @@ export class KnowledgeBase {
   async importFile(path: string, category: string) {
     if ((await stat(path)).size > 100000000) throw new Error('资料超过 100 MB，请按章节导入');
     const bytes = await readFile(path),
-      sourceHash = createHash('sha256').update(bytes).digest('hex');
+      sourceHash = sha256(bytes);
     const parsed =
       extname(path).toLowerCase() === '.srt'
         ? { text: bytes.toString('utf8'), needsOcr: false }
         : await parseDocument(path);
     if (parsed.needsOcr) throw new Error('这份 PDF 主要是图片，请先识别文字后再导入知识库');
-    if (
-      createHash('sha256')
-        .update(await readFile(path))
-        .digest('hex') !== sourceHash
-    )
+    if (sha256(await readFile(path)) !== sourceHash)
       throw new Error('导入期间资料已改变，请重新选择');
     return this.request('import', {
       title: basename(path),

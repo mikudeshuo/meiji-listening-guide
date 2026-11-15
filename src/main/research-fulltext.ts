@@ -1,9 +1,9 @@
-import { createHash } from 'node:crypto';
 import { decodeHTML } from 'entities';
 import iconv from 'iconv-lite';
 import { z } from 'zod';
 import { publicHttpResponse, publicHttps } from './public-http';
 import type { ExternalEvidence } from './research-external';
+import { sha256, sha256Json } from './digest';
 export type FulltextChoice = { url: string; pages?: number[] };
 export type FulltextEvidence = {
   provider: 'arxiv' | 'web';
@@ -18,7 +18,6 @@ export type FulltextEvidence = {
   truncated: boolean;
   responseSha256: string;
 };
-const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 async function bytes(response: Response, max: number, signal: AbortSignal) {
   if (!response.body) throw new Error('正文响应为空');
   if (Number(response.headers.get('content-length') || 0) > max) {
@@ -167,9 +166,9 @@ export class NativeResearchFulltext {
               page,
               totalPages: pdf.numPages,
               truncated: text.length > 12000,
-              responseSha256: createHash('sha256').update(data).digest('hex'),
+              responseSha256: sha256(data),
             };
-            rows.push({ ...value, sha256: hash(value) });
+            rows.push({ ...value, sha256: sha256Json(value) });
           }
         } finally {
           signal.removeEventListener('abort', abort);
@@ -203,9 +202,9 @@ export class NativeResearchFulltext {
             url: url.href,
             scope: 'web_excerpt' as const,
             obtainedAt: new Date().toISOString(),
-            responseSha256: createHash('sha256').update(data).digest('hex'),
+            responseSha256: sha256(data),
           };
-          rows.push({ ...value, sha256: hash(value) });
+          rows.push({ ...value, sha256: sha256Json(value) });
         } finally {
           await result.close();
         }
@@ -217,7 +216,7 @@ export class NativeResearchFulltext {
     for (const row of rows) {
       const { sha256, ...value } = row;
       publicHttps(row.url);
-      if (hash(value) !== sha256) throw new Error('正文快照内容与回执不符');
+      if (sha256Json(value) !== sha256) throw new Error('正文快照内容与回执不符');
     }
   }
 }

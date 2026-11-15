@@ -1,10 +1,10 @@
 import Database from 'better-sqlite3';
-import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync, lstatSync, existsSync, realpathSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import { windowsProtect } from './windows-native';
 import { imLoopback } from './im-loopback';
+import { hexId, sha256Json } from './digest';
 export const imId = z.string().regex(/^[a-f0-9]{32}$/);
 const platforms = ['qq_napcat', 'weixin_local', 'weixin_web', 'weixin_ilink'] as const;
 export const imScope = z.object({
@@ -29,8 +29,6 @@ type StoredConnection = {
   checked_at: number | null;
   capabilities: string;
 };
-const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex'),
-  id = () => randomUUID().replaceAll('-', '');
 export type NativeImConnection = ReturnType<NativeImStore['capture']>;
 /** Uses the existing app-owned database and DPAPI format. Merely listing connections never decrypts sessions. */
 export class NativeImStore {
@@ -56,7 +54,7 @@ export class NativeImStore {
    CREATE TABLE IF NOT EXISTS messages(platform TEXT,account TEXT,login_epoch TEXT,peer TEXT,mid TEXT,ts REAL,sender TEXT,text TEXT,kind TEXT,PRIMARY KEY(platform,account,login_epoch,peer,mid));
    CREATE TABLE IF NOT EXISTS send_operations(operation_id TEXT PRIMARY KEY,digest TEXT NOT NULL,scope TEXT NOT NULL,state TEXT NOT NULL,receipt TEXT NOT NULL,updated REAL NOT NULL);
    CREATE TABLE IF NOT EXISTS login_operations(operation_id TEXT PRIMARY KEY,scope TEXT NOT NULL,projection TEXT NOT NULL);`);
-    this.db.prepare('INSERT OR IGNORE INTO registry VALUES(1,?)').run(id());
+    this.db.prepare('INSERT OR IGNORE INTO registry VALUES(1,?)').run(hexId());
   }
   private revision() {
     return (
@@ -172,21 +170,21 @@ export class NativeImStore {
           if (old && unchanged)
             this.db
               .prepare('UPDATE connections SET name=?,revision=? WHERE id=?')
-              .run(value.name, id(), old.id);
+              .run(value.name, hexId(), old.id);
           else if (old)
             this.db
               .prepare(
                 "UPDATE connections SET name=?,revision=?,public=?,sealed=?,account='',login_epoch='',session=NULL,checked_at=NULL,capabilities='{}' WHERE id=?",
               )
-              .run(value.name, id(), JSON.stringify(fields), sealed, old.id);
+              .run(value.name, hexId(), JSON.stringify(fields), sealed, old.id);
           else
             this.db
               .prepare(
                 'INSERT INTO connections(id,name,platform,revision,public,sealed) VALUES(?,?,?,?,?,?)',
               )
-              .run(id(), value.name, value.platform, id(), JSON.stringify(fields), sealed);
+              .run(hexId(), value.name, value.platform, hexId(), JSON.stringify(fields), sealed);
         }
-        this.db.prepare('UPDATE registry SET revision=? WHERE id=1').run(id());
+        this.db.prepare('UPDATE registry SET revision=? WHERE id=1').run(hexId());
         return this.listing();
       })
       .immediate();
@@ -203,8 +201,16 @@ export class NativeImStore {
           .prepare(
             'UPDATE connections SET revision=?,account=?,login_epoch=?,session=?,checked_at=?,capabilities=? WHERE id=?',
           )
-          .run(id(), account, id(), sealed, Date.now() / 1000, JSON.stringify(capabilities), key);
-        this.db.prepare('UPDATE registry SET revision=? WHERE id=1').run(id());
+          .run(
+            hexId(),
+            account,
+            hexId(),
+            sealed,
+            Date.now() / 1000,
+            JSON.stringify(capabilities),
+            key,
+          );
+        this.db.prepare('UPDATE registry SET revision=? WHERE id=1').run(hexId());
         return this.capture(key);
       })
       .immediate();
@@ -276,8 +282,8 @@ export class NativeImStore {
             Omit<typeof message, 'mid'> | undefined;
           if (
             prior &&
-            hash(prior) !==
-              hash({
+            sha256Json(prior) !==
+              sha256Json({
                 ts: message.ts,
                 sender: message.sender,
                 text: message.text,
@@ -380,7 +386,7 @@ export class NativeImStore {
     return this.db
       .transaction(() => {
         const { scope } = this.checkScope(value),
-          digest = hash({ scope, text: value.text }),
+          digest = sha256Json({ scope, text: value.text }),
           old = this.db
             .prepare('SELECT * FROM send_operations WHERE operation_id=?')
             .get(value.operation_id) as { digest: string; receipt: string } | undefined;

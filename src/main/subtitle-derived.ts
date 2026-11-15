@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile, rename, readdir, rm } from 'node:fs/promises';
 import { join, resolve, relative, isAbsolute } from 'node:path';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { parseSrt } from '../shared/srt';
 import {
@@ -12,7 +12,7 @@ import {
 import { folderName, libraryDirectory } from './library';
 import { subtitleLocator } from './subtitle-sync';
 import type { DerivedSource, SubtitleDerivedTask } from '../shared/subtitle-derived';
-const digest = (value: string) => createHash('sha256').update(value).digest('hex');
+import { sha256 } from './digest';
 const sourceSchema = z.object({
   url: z.string(),
   title: z.string().min(1).max(200),
@@ -119,7 +119,7 @@ export class SubtitleDerived {
     this.inside(source.path);
     const srt = await readFile(source.path, 'utf8');
     if (
-      digest(srt) !== source.hash ||
+      sha256(srt) !== source.hash ||
       (await dependencies.generation(source.url)) !== source.generation
     )
       throw new Error('字幕来源已有改变，请重新同步并建立笔记任务；旧成果保留');
@@ -142,7 +142,7 @@ export class SubtitleDerived {
           if (item.outputs?.length) {
             for (const output of item.outputs) {
               this.inside(output.path);
-              if (digest(await readFile(output.path, 'utf8')) !== output.hash)
+              if (sha256(await readFile(output.path, 'utf8')) !== output.hash)
                 throw new Error('已保存笔记被修改或缺失，请核对原文件；未自动覆盖');
             }
             item.status = '已完成';
@@ -195,7 +195,7 @@ export class SubtitleDerived {
           }
           signal.throwIfAborted();
           await this.current(item.source, dependencies);
-          item.outputs = files.map((file) => ({ path: file.path, hash: digest(file.text) }));
+          item.outputs = files.map((file) => ({ path: file.path, hash: sha256(file.text) }));
           item.status = '已完成';
           delete item.error;
           delete item.prepared;

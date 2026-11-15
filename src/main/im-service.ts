@@ -1,5 +1,4 @@
 import encodeQR from 'qr';
-import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { NativeImStore, imId, imScope } from './im-store';
@@ -11,6 +10,7 @@ import { NativeWeixinLocal } from './im-weixin-local';
 import { NativeImAutomation, type NativeImKnowledge } from './im-automation';
 import type { ResearchModel } from './research-engine';
 import { NativeImCleanup } from './im-cleanup';
+import { hexId } from './digest';
 type Projection = {
   operation_id: string;
   connection_id: string;
@@ -228,7 +228,7 @@ export class NativeImService {
         projection: {
           operation_id: value.operation_id,
           connection_id: row.id,
-          generation: randomUUID().replaceAll('-', ''),
+          generation: hexId(),
           state: 'verifying',
           account: '',
           has_qr: false,

@@ -2,7 +2,7 @@ import { copyFile, lstat, mkdir, realpath } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { NativeMediaOptions } from './media-options';
-import { mediaFileHash } from './media-artifact';
+import { sha256File } from './digest';
 /** Layout copies are verified before original staging files become eligible for cleanup. */
 export async function publishMediaLayout(
   directory: string,
@@ -48,7 +48,7 @@ export async function publishMediaLayout(
       target = join(folder, name),
       item = await lstat(source);
     if (!item.isFile() || item.isSymbolicLink()) throw new Error('待整理成果不是普通文件');
-    const hash = await mediaFileHash(source);
+    const hash = await sha256File(source);
     try {
       await copyFile(source, target, constants.COPYFILE_EXCL);
     } catch (error) {
@@ -59,8 +59,8 @@ export async function publishMediaLayout(
       !copied.isFile() ||
       copied.isSymbolicLink() ||
       copied.size !== item.size ||
-      (await mediaFileHash(target)) !== hash ||
-      (await mediaFileHash(source)) !== hash
+      (await sha256File(target)) !== hash ||
+      (await sha256File(source)) !== hash
     )
       throw new Error('目录整理成果校验失败，原文件和已有目标均保留');
   }

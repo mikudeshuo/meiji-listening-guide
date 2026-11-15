@@ -1,9 +1,7 @@
-import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { NativeImStore, imId, imScope, type NativeImScope } from './im-store';
 import type { ResearchSource } from './research-sources';
-const hash = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex'),
-  id = () => randomUUID().replaceAll('-', '');
+import { hexId, sha256Json } from './digest';
 const policySchema = z.object({
   identity: z.string().max(6000),
   mode: z.enum(['draft', 'auto_reply']),
@@ -51,7 +49,7 @@ type Dependencies = {
   knowledge?: NativeImKnowledge;
 };
 const scopeKey = (scope: NativeImScope) =>
-  hash([scope.connection_id, scope.platform, scope.account, scope.login_epoch, scope.peer]);
+  sha256Json([scope.connection_id, scope.platform, scope.account, scope.login_epoch, scope.peer]);
 /** No startup polling. Every run requires a currently saved rule and an explicit start for one peer. */
 export class NativeImAutomation {
   private generations = new Map<string, Promise<void>>();
@@ -132,7 +130,7 @@ export class NativeImAutomation {
       if (args.value.knowledge_ids.some((value) => value !== this.deps.knowledge?.id))
         throw new Error('所选知识库不可用');
       this.pause(key);
-      this.put('rules', key, { revision: id(), value: args.value });
+      this.put('rules', key, { revision: hexId(), value: args.value });
     }
     const current = this.get<{ revision: string; value: Policy }>('rules', key) || old;
     return { conversation: current, effective: current.value };
@@ -241,7 +239,7 @@ export class NativeImAutomation {
               )
                 continue;
               const job: Job = {
-                id: id(),
+                id: hexId(),
                 scope: run.scope,
                 scope_key: key,
                 rule_revision: run.rule_revision,
@@ -325,7 +323,7 @@ export class NativeImAutomation {
           attempt.scope_key === job.scope_key && attempt.createdAt > Date.now() - 3600000,
       );
       if (attempts.length >= policy.reply_limit_hour) throw new Error('本会话已达到每小时回复上限');
-      this.put('attempt', id(), {
+      this.put('attempt', hexId(), {
         scope_key: job.scope_key,
         createdAt: Date.now(),
         job_id: job.id,
@@ -354,7 +352,7 @@ export class NativeImAutomation {
         ...job,
         state: 'sending',
         output: { text: text.trim() },
-        send_op: hash(['native-im-job', job.id]).slice(0, 32),
+        send_op: sha256Json(['native-im-job', job.id]).slice(0, 32),
         outcome_unknown: true,
       });
       const receipt = (await this.deps.send({
@@ -395,16 +393,14 @@ export class NativeImAutomation {
         .filter((job) => job.scope_key === key)
         .sort((a, b) => b.createdAt - a.createdAt);
       return {
-        jobs: rows
-          .slice(args.offset, args.offset + args.limit)
-          .map((job) => ({
-            ...job,
-            allowed_actions: job.send_op
-              ? ['reconcile']
-              : ['failed', 'unknown', 'blocked'].includes(job.state)
-                ? ['retry_generation']
-                : [],
-          })),
+        jobs: rows.slice(args.offset, args.offset + args.limit).map((job) => ({
+          ...job,
+          allowed_actions: job.send_op
+            ? ['reconcile']
+            : ['failed', 'unknown', 'blocked'].includes(job.state)
+              ? ['retry_generation']
+              : [],
+        })),
         next_offset: args.offset + args.limit < rows.length ? args.offset + args.limit : null,
       };
     }

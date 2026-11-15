@@ -15,13 +15,13 @@ import { exportVideoNotes, saveTextExport } from '../video-exports';
 import type { VideoBatchItem } from '../../shared/video-ppt';
 import { snapanyDownload } from '../snapany';
 import { noteTitles } from '../../shared/video-notes';
-import { createHash } from 'node:crypto';
 import { defaultVideoPrompt } from '../../shared/video-ppt';
 import { VideoPpt } from '../video-ppt';
 import { defaultPptExtractPrompt } from '../../shared/ppt-extract';
 import { deleteConvertedPpt, verifyGeneratedPdf } from '../pdf-ppt-cleanup';
 import type { ApplicationContext } from '../main';
 import type { IpcHandler } from './handler';
+import { sha256 } from '../digest';
 export function createCoursewareHandler(
   context: Pick<
     ApplicationContext,
@@ -490,7 +490,7 @@ export function createCoursewareHandler(
                 meta.saved.path,
               );
               const bytes = await readFile(path),
-                hash = createHash('sha256').update(bytes).digest('hex');
+                hash = sha256(bytes);
               if (hash !== meta.saved.sha256)
                 throw new Error('已保存字幕与任务记录不一致，临时视频已保留');
               const srt = bytes.toString('utf8'),

@@ -3,7 +3,8 @@ import { CodexSettings } from './CodexSettings';
 import { DeepSeekSettings } from './DeepSeekSettings';
 import { useEffect, useState } from 'react';
 import type { CourseFile, Detail, LectureNotes, PastQuestion, Settings } from '../../shared/types';
-import { invoke, Modal, FilePicker } from './UiParts';
+import { Modal, FilePicker } from './UiParts';
+import { invoke } from './ipc';
 export function NewCourse({
   close,
   create,

@@ -1,15 +1,10 @@
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { executePdfOperation } from './pdf-annotations';
 import type { Highlight } from '../shared/study';
 
-export async function fileHash(path: string) {
-  const hash = createHash('sha256');
-  for await (const chunk of createReadStream(path)) hash.update(chunk);
-  return hash.digest('hex');
-}
 export function pdfOperation<T>(request: Record<string, unknown>): Promise<T> {
   return executePdfOperation(request) as Promise<T>;
 }

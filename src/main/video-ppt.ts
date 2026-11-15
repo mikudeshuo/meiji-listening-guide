@@ -1,4 +1,4 @@
-import { app, nativeImage } from 'electron';
+import { nativeImage } from 'electron';
 import { spawn } from 'node:child_process';
 import {
   mkdir,
@@ -13,7 +13,7 @@ import {
   rename,
 } from 'node:fs/promises';
 import { join, basename, resolve, dirname } from 'node:path';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { inflateSync } from 'node:zlib';
 import { z } from 'zod';
 import type { CodexClient } from './codex';
@@ -22,13 +22,10 @@ import { imagePdf } from './image-pdf';
 import { verifyGeneratedPdf } from './pdf-ppt-cleanup';
 import { StableSlides, checkedRegion, type Region } from './video-policy';
 import type { VideoSource, VideoReview, PendingVideoTask } from '../shared/video-ppt';
+import { sha256 } from './digest';
+import { resourcesDirectory } from './paths';
 
-export const ffmpegPath = () =>
-  join(
-    app.isPackaged ? process.resourcesPath : join(app.getAppPath(), 'resources'),
-    'video',
-    'ffmpeg.exe',
-  );
+export const ffmpegPath = () => join(resourcesDirectory(), 'video', 'ffmpeg.exe');
 export function ffmpeg(
   args: string[],
   signal: AbortSignal,
@@ -210,7 +207,7 @@ export class VideoPpt {
       courseName: meta.courseName,
       url: meta.url,
       page: meta.page,
-      saved: { path, sha256: createHash('sha256').update(bytes).digest('hex') },
+      saved: { path, sha256: sha256(bytes) },
     };
     const temp = join(meta.dir, 'task-result.tmp');
     await writeFile(temp, JSON.stringify(record));
@@ -407,7 +404,6 @@ export class VideoPpt {
     // eight-page batches; scan the entire video before reviewing duplicates.
     const frames: Array<{ page: number; time: number; path: string }> = [],
       hashes = new Set<string>();
-    const { createHash } = await import('node:crypto');
     for (const [i, time] of detector.times.entries()) {
       signal.throwIfAborted();
       this.progress(`提取候选画面 ${i + 1} / ${detector.times.length}`);
@@ -418,9 +414,7 @@ export class VideoPpt {
       // midpoint too, rather than the preceding slide-transition boundary.
       const capture = Math.min(time + 0.5, t.source.duration - 0.1);
       await ffmpeg(['-ss', String(capture), '-i', t.video, '-frames:v', '1', '-y', path], signal);
-      const hash = createHash('sha256')
-        .update(await readFile(path))
-        .digest('hex');
+      const hash = sha256(await readFile(path));
       if (hashes.has(hash)) continue;
       hashes.add(hash);
       frames.push({ page: frames.length + 1, time: capture, path });

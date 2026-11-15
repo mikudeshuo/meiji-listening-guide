@@ -1,5 +1,5 @@
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import { sha256Json } from './digest';
 const candidate = z.object({
   kind: z.enum(['preference', 'progress', 'correction']),
   title: z.string().trim().min(1).max(80),
@@ -38,10 +38,7 @@ export function readResearchAnswer(
         throw new Error('记忆建议未包含相应字段原句，未保存建议或研究成果');
       return {
         ...value,
-        candidate_id: createHash('sha256')
-          .update(JSON.stringify([task.task_id, index, value]))
-          .digest('hex')
-          .slice(0, 32),
+        candidate_id: sha256Json([task.task_id, index, value]).slice(0, 32),
         status: 'pending',
       };
     });

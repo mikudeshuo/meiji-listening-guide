@@ -1,9 +1,8 @@
 import Database from 'better-sqlite3';
-import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, lstatSync, realpathSync, mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { z } from 'zod';
-const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+import { hexId, sha256, sha256Json } from './digest';
 const opSchema = z.string().regex(/^[a-f0-9]{32}$/);
 const conversationId = z.string().regex(/^(?:cv_)?[a-f0-9]{32}$/);
 const memorySchema = z.object({
@@ -45,7 +44,7 @@ export class NativeResearchStore {
       throw new Error('研究资料数据库路径无效');
     const kb = join(root, 'knowledge_base'),
       canonical = existsSync(kb) ? realpathSync(kb) : resolve(kb);
-    this.rootId = 'kbr_' + digest(['kbr', canonical.toLowerCase()]).slice(0, 32);
+    this.rootId = 'kbr_' + sha256Json(['kbr', canonical.toLowerCase()]).slice(0, 32);
     this.db = new Database(path);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('busy_timeout = 5000');
@@ -80,7 +79,7 @@ export class NativeResearchStore {
   }
   operation<T>(op: string, request: unknown, run: () => T): T {
     opSchema.parse(op);
-    const signature = digest(request);
+    const signature = sha256Json(request);
     return this.db.transaction(() => {
       const prior = this.db
         .prepare('SELECT signature,result FROM research_operations WHERE op=?')
@@ -140,7 +139,7 @@ export class NativeResearchStore {
       } else if (value.revision !== 0 || deleting) throw new Error('新记忆的版本无效');
       if (!prior && this.memories().capacity.used >= 100) throw new Error('学习记忆最多保存100条');
       const now = Date.now() / 1000,
-        id = value.memory_id || randomUUID().replaceAll('-', ''),
+        id = value.memory_id || hexId(),
         revision = value.revision + 1;
       if (deleting) {
         this.put('memory', id, revision, {
@@ -186,7 +185,7 @@ export class NativeResearchStore {
   }
   createConversation(title: string) {
     const row = conversationSchema.parse({
-      conversation_id: 'cv_' + randomUUID().replaceAll('-', ''),
+      conversation_id: 'cv_' + hexId(),
       title,
       revision: 0,
       pinned: false,
@@ -275,9 +274,7 @@ export class NativeResearchStore {
           .parse(JSON.parse(z.string().max(4000000).parse(record.state_json)));
         const steps = raw.steps.map((step) => ({
           ...step,
-          hash_verified:
-            step.answer_sha256 !== null &&
-            step.answer_sha256 === createHash('sha256').update(step.answer).digest('hex'),
+          hash_verified: step.answer_sha256 !== null && step.answer_sha256 === sha256(step.answer),
         }));
         return {
           workflow_id: raw.workflow_id,
@@ -501,7 +498,7 @@ export class NativeResearchStore {
         imported: true,
         root: this.rootId,
         counts,
-        digest: digest(snapshot),
+        digest: sha256Json(snapshot),
         oldDatabaseReadOnly: true,
         completedNativeResearch: false,
       };
@@ -553,7 +550,7 @@ export class NativeResearchStore {
       for (const old of notes) {
         const id = opSchema.parse(old.note_id),
           markdown = z.string().max(4000000).parse(old.markdown),
-          bodyHash = createHash('sha256').update(markdown).digest('hex'),
+          bodyHash = sha256(markdown),
           receipt = z
             .object({
               note_id: opSchema,
@@ -601,17 +598,15 @@ export class NativeResearchStore {
           throw new Error('旧笔记编号与新笔记冲突，两个版本保留待确认');
         if (!existing) this.put('note', id, note.lifecycle.revision, note);
       }
-      this.db
-        .prepare('INSERT INTO research_baselines VALUES(?,?)')
-        .run(
-          'legacy-notes-v1',
-          JSON.stringify({
-            count: notes.length,
-            digest: digest(notes),
-            legacyReadOnly: true,
-            sourceCurrentness: 'not_revalidated',
-          }),
-        );
+      this.db.prepare('INSERT INTO research_baselines VALUES(?,?)').run(
+        'legacy-notes-v1',
+        JSON.stringify({
+          count: notes.length,
+          digest: sha256Json(notes),
+          legacyReadOnly: true,
+          sourceCurrentness: 'not_revalidated',
+        }),
+      );
     })();
   }
 }

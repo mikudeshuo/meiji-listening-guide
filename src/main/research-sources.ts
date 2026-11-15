@@ -1,7 +1,7 @@
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import { NativeKnowledgeStore } from './knowledge-store';
 import type { KnowledgeHit } from '../shared/knowledge';
+import { sha256 } from './digest';
 const sourceId = z.string().regex(/^(?:BV[A-Za-z0-9]{10}|LV(?:[a-f0-9]{8}|[a-f0-9]{64}))$/);
 const bindingSchema = z.object({
   kb_root_id: z.string(),
@@ -23,7 +23,6 @@ export type ResearchSource = {
   excerpt: boolean;
   quote: string;
 };
-const hash = (text: string) => createHash('sha256').update(text).digest('hex');
 /** Research uses the same native source generations and evidence membership as the knowledge UI. */
 export class NativeResearchSources {
   constructor(
@@ -94,7 +93,7 @@ export class NativeResearchSources {
       title: source.entry.title,
       locator: source.entry.source_locator,
       text: source.text,
-      sourceHash: hash(source.text),
+      sourceHash: sha256(source.text),
       generation: source.entry.generation_id,
       excerpt: false,
       quote: hit.content,
