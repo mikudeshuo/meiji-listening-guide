@@ -125,7 +125,7 @@ export default function App() {
     operation = useRef(false);
   current.current = { courseId, lectureId, sessionId };
   async function reloadCourse(id = courseId) {
-    const result = await invoke<Detail>('course:detail', { id });
+    const result = await invoke('course:detail', { id });
     if (current.current.courseId === id) {
       setDetail(result);
       setSessions((v) => [...v.filter((s) => s.course_id !== id), ...result.sessions]);
@@ -133,7 +133,7 @@ export default function App() {
     return result;
   }
   async function reloadLecture(id = lectureId) {
-    const result = await invoke<LectureDetail>('lecture:detail', { id });
+    const result = await invoke('lecture:detail', { id });
     if (current.current.lectureId === id) setLecture(result);
     return result;
   }
@@ -164,21 +164,17 @@ export default function App() {
     }
   }
   useEffect(() => {
-    void invoke<AppearanceState>('appearance:get')
+    void invoke('appearance:get')
       .then(setAppearance)
       .catch((e) => setError(String(e)));
   }, []);
   useEffect(() => {
-    void invoke<Identity>('identity:get')
+    void invoke('identity:get')
       .then(setIdentity)
       .catch((e) => setError(String(e)));
   }, []);
   useEffect(() => {
-    void Promise.all([
-      invoke<Course[]>('courses'),
-      invoke<Settings>('settings:get'),
-      invoke<ChatSession[]>('sessions'),
-    ])
+    void Promise.all([invoke('courses'), invoke('settings:get'), invoke('sessions')])
       .then(([c, s, cs]) => {
         setSessions(cs);
         setCourses(c);
@@ -221,7 +217,7 @@ export default function App() {
     setMenu(false);
     request.current = '';
     if (courseId)
-      void invoke<Detail>('course:detail', { id: courseId })
+      void invoke('course:detail', { id: courseId })
         .then((d) => {
           if (current.current.courseId === courseId) {
             setDetail(d);
@@ -271,10 +267,12 @@ export default function App() {
       : 'custom';
   const exportResult = (kind: string, format: string) =>
     void task(async () => {
-      const path = await invoke<string>('export', { id: lectureId, kind, format });
+      const path = await invoke('export', { id: lectureId, kind, format });
       setProgress({ stage: '已导出', message: path });
     });
-  async function generate(action: string) {
+  async function generate(
+    action: 'subtitles:generate' | 'notes:generate' | 'practice:generate' | 'practice:prepare',
+  ) {
     const id = lectureId;
     try {
       await invoke(action, { id, ...(action === 'practice:generate' ? { withSearch } : {}) });
@@ -371,7 +369,7 @@ export default function App() {
                 const draft = sessionDraft;
                 void task(async () => {
                   const cid = draft.detail.course.id,
-                    next = await invoke<ChatSession>('session:create', {
+                    next = await invoke('session:create', {
                       courseId: cid,
                       lectureId: draft.lectureId || undefined,
                     });
@@ -424,7 +422,7 @@ export default function App() {
             close={() => setModal(null)}
             login={() => setModal('zhiyunLogin')}
             imported={async (id, cid) => {
-              setCourses(await invoke<Course[]>('courses'));
+              setCourses(await invoke('courses'));
               if (cid === courseId) {
                 await reloadCourse();
                 setLectureId(id);
@@ -445,7 +443,7 @@ export default function App() {
             save={async (value) => {
               let ok = false;
               await task(async () => {
-                setSettings(await invoke<Settings>('settings:save', { settings: value }));
+                setSettings(await invoke('settings:save', { settings: value }));
                 ok = true;
               });
               return ok;
@@ -476,9 +474,7 @@ export default function App() {
           <IdentityEditor
             initial={identity}
             close={() => setModal(null)}
-            save={async (value) =>
-              setIdentity(await invoke<Identity>('identity:save', { identity: value }))
-            }
+            save={async (value) => setIdentity(await invoke('identity:save', { identity: value }))}
           />
         )}
         <nav className="app-icon-rail">
@@ -611,7 +607,7 @@ export default function App() {
             selectedSession={sessionId}
             removeSession={async (cid, sid) => {
               const ok = await task(async () => {
-                const remaining = await invoke<ChatSession[]>('session:delete', {
+                const remaining = await invoke('session:delete', {
                   courseId: cid,
                   id: sid,
                   confirmed: true,
@@ -644,7 +640,7 @@ export default function App() {
               setInput('');
             }}
             newSession={(cid) =>
-              void invoke<Detail>('course:detail', { id: cid })
+              void invoke('course:detail', { id: cid })
                 .then((d) => {
                   const linked =
                     cid === courseId
@@ -666,7 +662,7 @@ export default function App() {
             remove={async (id) => {
               const ok = await task(async () => {
                 await invoke('course:delete', { id, confirmed: true });
-                const remaining = await invoke<Course[]>('courses');
+                const remaining = await invoke('courses');
                 setCourses(remaining);
                 setSessions((v) => v.filter((s) => s.course_id !== id));
                 if (id === courseId) {
@@ -689,7 +685,7 @@ export default function App() {
                     theme: settings.theme === 'light' ? 'dark' : 'light',
                   } as Settings;
                   void task(async () =>
-                    setSettings(await invoke<Settings>('settings:save', { settings: next })),
+                    setSettings(await invoke('settings:save', { settings: next })),
                   );
                 }
               }}
@@ -1440,7 +1436,7 @@ export default function App() {
             busy={busy}
             close={() => setModal(null)}
             changed={async () => {
-              setCourses(await invoke<Course[]>('courses'));
+              setCourses(await invoke('courses'));
               if (courseId) await reloadCourse();
               if (lectureId) await reloadLecture();
             }}
@@ -1452,8 +1448,8 @@ export default function App() {
             busy={busy}
             create={(name, senior, exams) =>
               task(async () => {
-                const c = await invoke<Course>('course:create', { name });
-                setCourses(await invoke<Course[]>('courses'));
+                const c = await invoke('course:create', { name });
+                setCourses(await invoke('courses'));
                 setCourseId(c.id);
                 if (senior.length)
                   await invoke('files:add', {
@@ -1481,9 +1477,12 @@ export default function App() {
             busy={busy}
             create={(title, transcriptPath, pptPath) =>
               task(async () => {
-                const value = await invoke<{
-                  id: string;
-                }>('lecture:create', { courseId, title, transcriptPath, pptPath });
+                const value = await invoke('lecture:create', {
+                  courseId,
+                  title,
+                  transcriptPath,
+                  pptPath,
+                });
                 await reloadCourse();
                 setLectureId(value.id);
                 setSourceDraft('');
@@ -1541,7 +1540,7 @@ export default function App() {
             busy={busy}
             save={(value) =>
               task(async () => {
-                const saved = await invoke<Settings>('settings:save', { settings: value });
+                const saved = await invoke('settings:save', { settings: value });
                 setSettings(saved);
               })
             }

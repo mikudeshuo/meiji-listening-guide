@@ -23,10 +23,7 @@ export function CodexSettings({
     [pending, setPending] = useState(false),
     [waiting, setWaiting] = useState(false);
   async function refresh() {
-    const [a, m] = await Promise.all([
-      invoke<CodexAccount>('codex:account'),
-      invoke<CodexModel[]>('codex:models'),
-    ]);
+    const [a, m] = await Promise.all([invoke('codex:account'), invoke('codex:models')]);
     setAccount(a);
     setModels(m);
     if (a.loggedIn) setWaiting(false);
@@ -155,7 +152,7 @@ export function CodexSettings({
           disabled={disabled || !account?.loggedIn}
           onClick={() =>
             void run(async () => {
-              setNotice(await invoke<string>('codex:test'));
+              setNotice(await invoke('codex:test'));
             })
           }
         >

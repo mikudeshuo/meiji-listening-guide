@@ -19,7 +19,7 @@ export function BiliBrowse({
     setResult(undefined);
     try {
       setResult(
-        await invoke<Listing>('bili-resources:browse', {
+        await invoke('bili-resources:browse', {
           kind,
           query: word,
           page,

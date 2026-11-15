@@ -50,7 +50,7 @@ export function ZhiyunImporter({
     setCourse(value);
     setLessons([]);
     setSubId('');
-    const rows = await invoke<ZhiyunLesson[]>('zhiyun:lessons', { courseId: value.id });
+    const rows = await invoke('zhiyun:lessons', { courseId: value.id });
     setLessons(rows);
     setSubId(rows[0]?.id || '');
   }
@@ -81,7 +81,7 @@ export function ZhiyunImporter({
         if (sub) setSubId(sub);
         return;
       }
-      const result = await invoke<{ courses: ZhiyunCourse[]; hasMore: boolean }>('zhiyun:search', {
+      const result = await invoke('zhiyun:search', {
         keyword,
         page: next,
       });
@@ -99,16 +99,13 @@ export function ZhiyunImporter({
     if (!course || !subId) return;
     await run(async () => {
       setProgress(kind === 'transcript' ? '正在准备语音识别原文…' : '正在准备 PPT…');
-      const result = await invoke<{ path: string; lectureId: string; courseId: string }>(
-        'zhiyun:export',
-        {
-          courseId: course.id,
-          courseName: course.title,
-          subId,
-          kind,
-          localCourseId: localCourseId || undefined,
-        },
-      );
+      const result = await invoke('zhiyun:export', {
+        courseId: course.id,
+        courseName: course.title,
+        subId,
+        kind,
+        localCourseId: localCourseId || undefined,
+      });
       if (result) {
         setSaved(result.path);
         await imported(result.lectureId, result.courseId);

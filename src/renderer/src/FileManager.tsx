@@ -24,10 +24,7 @@ export function FileManager({
     [creating, setCreating] = useState(false),
     [name, setName] = useState('');
   async function load() {
-    const [f, c] = await Promise.all([
-      invoke<LibraryFile[]>('library:list'),
-      invoke<Course[]>('courses'),
-    ]);
+    const [f, c] = await Promise.all([invoke('library:list'), invoke('courses')]);
     setFiles(f);
     setCourses(c);
   }
@@ -36,7 +33,7 @@ export function FileManager({
     setWorking(true);
     setError('');
     try {
-      const c = await invoke<Course>('course:create', { name: name.trim() });
+      const c = await invoke('course:create', { name: name.trim() });
       await load();
       await changed();
       setCourse(c.name);

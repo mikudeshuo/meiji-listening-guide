@@ -38,7 +38,7 @@ export function IdentityEditor({
   async function chooseAvatar() {
     setError('');
     try {
-      const data = await invoke<string | null>('identity:avatar');
+      const data = await invoke('identity:avatar');
       if (data) update(selected === 'user' ? { userAvatar: data } : { assistantAvatar: data });
     } catch (e) {
       setError(errorMessage(e));

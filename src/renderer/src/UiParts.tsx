@@ -58,7 +58,7 @@ export function FilePicker({
       <button
         type="button"
         onClick={() =>
-          void invoke<string[]>('pick', {
+          void invoke('pick', {
             kind: transcript ? 'transcript' : courseware ? 'courseware' : 'document',
             courseId,
           }).then((p) => p.length && set(transcript ? p : [...paths, ...p]))

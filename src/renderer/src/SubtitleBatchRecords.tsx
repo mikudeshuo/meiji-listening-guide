@@ -77,10 +77,10 @@ export function SubtitleBatchRecords({
                             disabled={busy}
                             onClick={() =>
                               action(async () => {
-                                const result = await invoke<SubtitleSyncTask | null>(
-                                  'subtitle-sync:attach',
-                                  { id: task.id, url: item.url },
-                                );
+                                const result = await invoke('subtitle-sync:attach', {
+                                  id: task.id,
+                                  url: item.url,
+                                });
                                 if (result) setNotice('指定字幕已同步，来源标为用户指定 SRT');
                               })
                             }
@@ -179,7 +179,7 @@ export function SubtitleBatchRecords({
             disabled={busy || !draft.urls.length || !draft.modes.length}
             onClick={() =>
               action(async () => {
-                const result = await invoke<SubtitleDerivedTask>('subtitle-derived:start', {
+                const result = await invoke('subtitle-derived:start', {
                   id: draft.task.id,
                   urls: draft.urls,
                   modes: draft.modes,
@@ -238,7 +238,7 @@ export function SubtitleBatchRecords({
                                     );
                                     const path =
                                       existing?.path ||
-                                      (await invoke<string>('video-ppt:notes-export', {
+                                      (await invoke('video-ppt:notes-export', {
                                         path: item.outputs![0].path,
                                         format,
                                       }));

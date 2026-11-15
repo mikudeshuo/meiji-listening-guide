@@ -80,7 +80,7 @@ export function BiliResources({
     [],
   );
   async function refresh() {
-    const current = await invoke<User>('bili-resources:status');
+    const current = await invoke('bili-resources:status');
     if (current.mid !== user.mid) {
       setBasket([]);
       setFolder(null);
@@ -88,7 +88,7 @@ export function BiliResources({
     }
     setUser(current);
     setChecked(true);
-    if (current.loggedIn) setFolders(await invoke<Folder[]>('bili-resources:folders'));
+    if (current.loggedIn) setFolders(await invoke('bili-resources:folders'));
     else {
       setFolders([]);
       setFolder(null);
@@ -114,7 +114,7 @@ export function BiliResources({
   }
   async function choose(video: Video) {
     if (basket.some((item) => item.url === video.url)) return;
-    const series = await invoke<VideoSeries>('video-ppt:series', { url: video.url });
+    const series = await invoke('video-ppt:series', { url: video.url });
     setBasket((current) => [...current, { url: video.url, title: video.title, series, pages: [] }]);
   }
   // A repeated waiting result must schedule the next check, even if its text
@@ -124,7 +124,7 @@ export function BiliResources({
     if (!visible || !qr || !['waiting', 'scanning'].includes(login)) return;
     let stopped = false;
     const timer = setTimeout(() => {
-      void invoke<{ status: string }>('bili-resources:poll')
+      void invoke('bili-resources:poll')
         .then(async (result) => {
           if (stopped) return;
           setLogin(result.status);
@@ -147,10 +147,7 @@ export function BiliResources({
     };
   }, [visible, qr, login, pollTick]);
   async function load(selected: Folder, nextPage: number) {
-    const result = await invoke<{ videos: Video[]; hasMore: boolean; page: number }>(
-      'bili-resources:videos',
-      { id: selected.id, page: nextPage },
-    );
+    const result = await invoke('bili-resources:videos', { id: selected.id, page: nextPage });
     setFolder(selected);
     setVideos(result.videos);
     setPage(result.page);
@@ -233,7 +230,7 @@ export function BiliResources({
                     void run(async () => {
                       setQr('');
                       setLogin('');
-                      setQr(await invoke<string>('bili-resources:qr'));
+                      setQr(await invoke('bili-resources:qr'));
                       setLogin('waiting');
                     })
                   }
@@ -450,7 +447,7 @@ export function BiliResources({
                 disabled={busy || !selectedCount}
                 onClick={() =>
                   void run(async () => {
-                    const task = await invoke<SubtitleSyncTask>('subtitle-sync:mixed', {
+                    const task = await invoke('subtitle-sync:mixed', {
                       selections: basket
                         .filter((item) => item.pages.length)
                         .map((item) => ({ url: item.url, title: item.title, pages: item.pages })),

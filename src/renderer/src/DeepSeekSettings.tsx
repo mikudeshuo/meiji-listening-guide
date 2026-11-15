@@ -156,7 +156,7 @@ export function DeepSeekSettings({
             disabled={disabled || !hasKey}
             onClick={() =>
               void run(async () => {
-                const models = await invoke<string[]>('deepseek:models', { profile });
+                const models = await invoke('deepseek:models', { profile });
                 patch({ models });
                 setNotice(
                   models.length
@@ -172,7 +172,7 @@ export function DeepSeekSettings({
             disabled={disabled || !hasKey || !available.includes(profile.model)}
             onClick={() =>
               void run(async () => {
-                setNotice(await invoke<string>('deepseek:test', { profile }));
+                setNotice(await invoke('deepseek:test', { profile }));
               })
             }
           >

@@ -6,7 +6,7 @@ export function RuntimePanel() {
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState('');
-  const refresh = () => invoke<RuntimeStatus>('runtime:status').then(setData);
+  const refresh = () => invoke('runtime:status').then(setData);
   useEffect(() => {
     void refresh().catch((e) => setError(String(e)));
   }, []);

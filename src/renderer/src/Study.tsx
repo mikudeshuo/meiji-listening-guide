@@ -60,7 +60,7 @@ export function Study({
     }
   }
   useEffect(() => {
-    void invoke<StudyEntry[]>('study:get')
+    void invoke('study:get')
       .then((rows) => {
         setEntries(rows);
         setSelected(rows[0]?.id || '');
@@ -69,7 +69,7 @@ export function Study({
   }, []);
   useEffect(() => {
     if (entry)
-      void invoke<Detail>('course:detail', { id: entry.courseId })
+      void invoke('course:detail', { id: entry.courseId })
         .then(setDetail)
         .catch((e) => setError(String(e)));
     else setDetail(null);
@@ -78,7 +78,7 @@ export function Study({
     let active = true;
     const task = (async () => {
       if (!book) return;
-      const data = await invoke<string>('textbook:bytes', { id: book.id }),
+      const data = await invoke('textbook:bytes', { id: book.id }),
         pdfTask = getDocument({
           url: data,
           disableAutoFetch: true,
@@ -116,7 +116,7 @@ export function Study({
   async function analyzeBook() {
     if (!book) return;
     let result: { id: string; rows: Highlight[] };
-    const ppt = await invoke<{ data: string; hash: string } | null>('textbook:ppt-source', {
+    const ppt = await invoke('textbook:ppt-source', {
       entryId: selected,
     });
     if (ppt) {
@@ -149,7 +149,7 @@ export function Study({
       if (last < first || last - first > 99 || last > book.pages)
         throw new Error('请选择不超过 100 页的章节范围');
       setNotice('正在识别扫描教材；请逐条核对文字和位置后保存');
-      const data = await invoke<string>('textbook:bytes', { id: book.id }),
+      const data = await invoke('textbook:bytes', { id: book.id }),
         task = getDocument({
           url: data,
           disableAutoFetch: true,
@@ -239,7 +239,7 @@ export function Study({
               disabled={busy || !text.trim()}
               onClick={() =>
                 void run(async () => {
-                  const rows = await invoke<StudyEntry[]>('study:parse', { text, timezone });
+                  const rows = await invoke('study:parse', { text, timezone });
                   if (!rows.length)
                     throw new Error(
                       '课表缺少明确的日期、结束时间或章节，或课程无法匹配，请补充后重试',
@@ -406,7 +406,7 @@ export function Study({
             disabled={busy}
             onClick={() =>
               void run(async () => {
-                const result = await invoke<Book | null>('textbook:pick');
+                const result = await invoke('textbook:pick');
                 if (result) {
                   setBook(result);
                   setPageNumber(1);

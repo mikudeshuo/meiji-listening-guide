@@ -103,7 +103,7 @@ export function AppearanceEditor({
         let result: AppearanceState | undefined;
         try {
           for (const [id, value] of batch)
-            result = await invoke<AppearanceState>('appearance:save', {
+            result = await invoke('appearance:save', {
               value,
               courseId: id || undefined,
             });
@@ -211,7 +211,7 @@ export function AppearanceEditor({
             onClick={() =>
               void run(async () =>
                 commit(
-                  await invoke<AppearanceState>('appearance:save', {
+                  await invoke('appearance:save', {
                     value,
                     courseId: scope === 'course' ? editingCourseId : undefined,
                   }),
@@ -249,7 +249,7 @@ export function AppearanceEditor({
                 onClick={() =>
                   void run(async () =>
                     commit(
-                      await invoke<AppearanceState>('appearance:clear', {
+                      await invoke('appearance:clear', {
                         courseId,
                       }),
                     ),
@@ -286,7 +286,7 @@ export function AppearanceEditor({
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    const next = await invoke<AppearanceState>('appearance:clear', {
+                    const next = await invoke('appearance:clear', {
                       courseId: editingCourseId,
                     });
                     commit(next);
@@ -319,7 +319,7 @@ export function AppearanceEditor({
                 disabled={busy}
                 onClick={() =>
                   void run(async () => {
-                    const image = await invoke<string | null>('appearance:image');
+                    const image = await invoke('appearance:image');
                     if (image) update({ image, background: 'image' });
                   })
                 }
@@ -363,7 +363,7 @@ export function AppearanceEditor({
                   const next = { ...value, accent: 'default' as const };
                   setValue(next);
                   commit(
-                    await invoke<AppearanceState>('appearance:save', {
+                    await invoke('appearance:save', {
                       value: next,
                       courseId: scope === 'course' ? editingCourseId : undefined,
                     }),
@@ -416,7 +416,7 @@ export function AppearanceEditor({
                 const next = { ...defaultAppearance };
                 setValue(next);
                 commit(
-                  await invoke<AppearanceState>('appearance:save', {
+                  await invoke('appearance:save', {
                     value: next,
                     courseId: scope === 'course' ? editingCourseId : undefined,
                   }),

@@ -9,7 +9,7 @@ export function ZhiyunLogin({
 }) {
   const slot = useRef<HTMLDivElement>(null),
     [error, setError] = useState('');
-  async function navigate(action: string) {
+  async function navigate(action: 'zhiyun:back' | 'zhiyun:refresh' | 'zhiyun:login') {
     setError('');
     try {
       await invoke(action);

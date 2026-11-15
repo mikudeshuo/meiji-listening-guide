@@ -37,7 +37,7 @@ export function PptExtract({
     [sourceDeleted, setSourceDeleted] = useState(false);
   async function refresh() {
     setPdfs(
-      (await invoke<LibraryFile[]>('library:list')).filter(
+      (await invoke('library:list')).filter(
         (f) =>
           f.category === 'PPT' &&
           /\.pdf$/i.test(f.name) &&
@@ -116,7 +116,7 @@ export function PptExtract({
             disabled={busy}
             onClick={() =>
               void run(async () => {
-                const file = await invoke<string | null>('ppt-extract:pick');
+                const file = await invoke('ppt-extract:pick');
                 if (file) choose(file);
               })
             }
@@ -157,7 +157,7 @@ export function PptExtract({
                 setReview(null);
                 setSaved(null);
                 setProgress('正在准备 PPT');
-                setReview(await invoke<PptExtractReview>('ppt-extract:analyze', { path, prompt }));
+                setReview(await invoke('ppt-extract:analyze', { path, prompt }));
               })
             }
           >
@@ -217,13 +217,7 @@ export function PptExtract({
               onClick={() =>
                 void run(async () => {
                   setProgress('正在生成 PDF');
-                  const result = await invoke<{
-                    path: string;
-                    kept: number;
-                    removed: number;
-                    sourceDeleted: boolean;
-                    cleanupWarning: string;
-                  }>('ppt-extract:export', {
+                  const result = await invoke('ppt-extract:export', {
                     id: review.id,
                     courseId: courseId || undefined,
                     pages: review.pages.map(({ page, keep, crop }) => ({ page, keep, crop })),

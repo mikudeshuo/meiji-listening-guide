@@ -74,7 +74,7 @@ export function KnowledgeBase({ visible, close }: { visible: boolean; close: () 
     new Set(data.entries.map((entry) => entry.folder).filter(Boolean)),
   ).sort();
   async function refresh() {
-    setData(await invoke<KnowledgeList>('knowledge:list'));
+    setData(await invoke('knowledge:list'));
     setVector(await invoke<VectorState>('knowledge:vector-status'));
   }
   useEffect(() => {
@@ -338,7 +338,7 @@ export function KnowledgeBase({ visible, close }: { visible: boolean; close: () 
             void run(async () => {
               setAnswer(null);
               setReading(null);
-              setSearch(await invoke<KnowledgeSearch>('knowledge:search', { query, ids }));
+              setSearch(await invoke('knowledge:search', { query, ids }));
             });
           }}
         >
@@ -359,7 +359,7 @@ export function KnowledgeBase({ visible, close }: { visible: boolean; close: () 
               void run(async () => {
                 setSearch(null);
                 setReading(null);
-                setAnswer(await invoke<Answer>('knowledge:ask', { query, ids }));
+                setAnswer(await invoke('knowledge:ask', { query, ids }));
               })
             }
           >

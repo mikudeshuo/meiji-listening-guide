@@ -410,7 +410,7 @@ export function Materials({
     [edit, setEdit] = useState<PastQuestion | null>(null);
   const add = (kind: CourseFile['kind']) =>
     void run(async () => {
-      const paths = await invoke<string[]>('pick', { kind: 'document' });
+      const paths = await invoke('pick', { kind: 'document' });
       if (paths.length) await invoke('files:add', { courseId: detail.course.id, kind, paths });
     });
   const saveQuestions = (questions: PastQuestion[]) =>

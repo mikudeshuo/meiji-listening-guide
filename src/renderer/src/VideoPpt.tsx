@@ -92,7 +92,7 @@ export function VideoPpt({
     }
   }, [visible, incomingUrl]);
   async function refresh() {
-    const files = (await invoke<LibraryFile[]>('library:list')).filter(
+    const files = (await invoke('library:list')).filter(
       (f) => !courseName || !f.course || f.course === courseName,
     );
     setPdfs(files.filter((f) => f.category === 'PPT' && f.name.endsWith('-视频课件.pdf')));
@@ -139,7 +139,7 @@ export function VideoPpt({
     setSource(null);
     setSaved(null);
     setChecked(false);
-    setSource(await invoke<VideoSource>('video-ppt:source', args));
+    setSource(await invoke('video-ppt:source', args));
   }
   async function open(path: string, reveal = false) {
     await run(async () => {
@@ -237,7 +237,7 @@ export function VideoPpt({
                     disabled={busy}
                     onClick={() =>
                       void run(async () => {
-                        const path = await invoke<string | null>('video-ppt:pick');
+                        const path = await invoke('video-ppt:pick');
                         if (path) {
                           setSource(null);
                           setReview(null);
@@ -276,7 +276,7 @@ export function VideoPpt({
                       setSelected([]);
                       setBatch([]);
                       setFilter('');
-                      const loaded = await invoke<VideoSeries>('video-ppt:series', { url });
+                      const loaded = await invoke('video-ppt:series', { url });
                       setSeries(loaded);
                       const requested = Number(new URL(url).searchParams.get('p') || 1);
                       setSubtitlePage(
@@ -375,7 +375,7 @@ export function VideoPpt({
                             setSaved(null);
                             setSource(null);
                             setReview(null);
-                            const result = await invoke<VideoBatchItem[]>('video-ppt:batch', {
+                            const result = await invoke('video-ppt:batch', {
                               url,
                               pages: selected,
                               prompt,
@@ -411,10 +411,9 @@ export function VideoPpt({
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
-                      const result = await invoke<BiliSubtitle | null>(
-                        'video-ppt:subtitle-import',
-                        { courseId: courseId || undefined },
-                      );
+                      const result = await invoke('video-ppt:subtitle-import', {
+                        courseId: courseId || undefined,
+                      });
                       if (result) {
                         setSubtitle(result);
                         setSubtitleSaved(result.savedPath || '');
@@ -453,9 +452,7 @@ export function VideoPpt({
                       const target =
                         series?.episodes.find((e) => e.page === subtitlePage)?.url || url;
                       setSubtitleSaved('');
-                      setSubtitle(
-                        await invoke<BiliSubtitle>('video-ppt:subtitle', { url: target }),
-                      );
+                      setSubtitle(await invoke('video-ppt:subtitle', { url: target }));
                     })
                   }
                 >
@@ -467,7 +464,7 @@ export function VideoPpt({
                     void run(async () => {
                       const target =
                         series?.episodes.find((e) => e.page === subtitlePage)?.url || url;
-                      const result = await invoke<BiliSubtitle>('video-ppt:subtitle-transcribe', {
+                      const result = await invoke('video-ppt:subtitle-transcribe', {
                         url: target,
                         courseId: courseId || undefined,
                       });
@@ -482,10 +479,9 @@ export function VideoPpt({
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
-                      const result = await invoke<BiliSubtitle | null>(
-                        'video-ppt:subtitle-transcribe-local',
-                        { courseId: courseId || undefined },
-                      );
+                      const result = await invoke('video-ppt:subtitle-transcribe-local', {
+                        courseId: courseId || undefined,
+                      });
                       if (result) {
                         setSubtitle(result);
                         setSubtitleSaved(result.savedPath || '');
@@ -517,7 +513,7 @@ export function VideoPpt({
                         const target =
                           series?.episodes.find((e) => e.page === subtitlePage)?.url || url;
                         setSubtitleSaved(
-                          await invoke<string>('video-ppt:subtitle-save', {
+                          await invoke('video-ppt:subtitle-save', {
                             url: target,
                             title: subtitle.title,
                             srt: subtitle.srt,
@@ -536,7 +532,7 @@ export function VideoPpt({
                         disabled={busy}
                         onClick={() =>
                           void run(async () => {
-                            const path = await invoke<string>('video-ppt:subtitle-export', {
+                            const path = await invoke('video-ppt:subtitle-export', {
                               title: subtitle.title,
                               srt: subtitle.srt,
                               format,
@@ -573,7 +569,7 @@ export function VideoPpt({
                   onClick={() =>
                     void run(async () => {
                       setSubtitleBatch([]);
-                      const result = await invoke<VideoBatchItem[]>('video-ppt:batch-subtitles', {
+                      const result = await invoke('video-ppt:batch-subtitles', {
                         url,
                         pages: selected,
                         courseId: courseId || undefined,
@@ -630,7 +626,7 @@ export function VideoPpt({
                   disabled={busy || !selected.length}
                   onClick={() =>
                     void run(async () => {
-                      const task = await invoke<SubtitleSyncTask>('subtitle-sync:start', {
+                      const task = await invoke('subtitle-sync:start', {
                         url,
                         pages: selected,
                         category: syncCategory.trim() || courseName || '',
@@ -677,10 +673,9 @@ export function VideoPpt({
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
-                      const result = await invoke<BiliSubtitle | null>(
-                        'video-ppt:subtitle-import',
-                        { courseId: courseId || undefined },
-                      );
+                      const result = await invoke('video-ppt:subtitle-import', {
+                        courseId: courseId || undefined,
+                      });
                       if (result) {
                         setSubtitle(result);
                         setSubtitleSaved(result.savedPath || '');
@@ -753,7 +748,7 @@ export function VideoPpt({
                         disabled={busy}
                         onClick={() =>
                           void run(async () => {
-                            const path = await invoke<string>('video-ppt:notes-export', {
+                            const path = await invoke('video-ppt:notes-export', {
                               path: summary.path,
                               format,
                             });
@@ -787,7 +782,7 @@ export function VideoPpt({
                     disabled={busy}
                     onClick={() =>
                       void run(async () => {
-                        const path = await invoke<string | null>('video-ppt:pick');
+                        const path = await invoke('video-ppt:pick');
                         if (path) await load({ path });
                       })
                     }
@@ -882,7 +877,7 @@ export function VideoPpt({
                 void run(async () => {
                   setChecked(false);
                   setReview(
-                    await invoke<VideoReview>('video-ppt:extract', {
+                    await invoke('video-ppt:extract', {
                       id: source.id,
                       crop: source.crop,
                       prompt,
@@ -1064,7 +1059,7 @@ export function VideoPpt({
                     disabled={busy || !!t.error}
                     onClick={() =>
                       void run(async () => {
-                        const result = await invoke<BiliSubtitle>('video-ppt:resume-subtitle', {
+                        const result = await invoke('video-ppt:resume-subtitle', {
                           id: t.id,
                         });
                         setSubtitle(result);
@@ -1081,10 +1076,7 @@ export function VideoPpt({
                     disabled={busy || !!t.error}
                     onClick={() =>
                       void run(async () => {
-                        const restored = await invoke<{
-                          source: VideoSource;
-                          review: VideoReview | null;
-                        }>('video-ppt:restore', { id: t.id });
+                        const restored = await invoke('video-ppt:restore', { id: t.id });
                         setSource(restored.source);
                         setReview(restored.review);
                         setSaved(null);
