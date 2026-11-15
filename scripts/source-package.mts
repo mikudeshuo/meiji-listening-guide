@@ -37,6 +37,7 @@ for (const name of [
   'electron.vite.config.ts',
   'tsconfig.json',
   'tsconfig.migrations.json',
+  'eslint.config.mjs',
   'README.md',
   'LICENSE',
   'NOTICE',
