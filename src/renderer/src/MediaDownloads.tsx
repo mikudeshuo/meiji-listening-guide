@@ -2,58 +2,9 @@ import { useEffect, useState } from 'react';
 import type { MediaCatalog, MediaJob } from '../../shared/media';
 import { invoke } from './ipc';
 import { errorMessage } from '../../shared/errors';
-type Options = Record<string, string | number | boolean | null>;
-type LoginProfile = { id: string; name: string; site: string; count: number };
-const labels: Record<string, string> = {
-  height: '最高画质',
-  audio_quality: '音频质量',
-  audio_only: '只保存音频',
-  subtitle_only: '只保存字幕',
-  subtitles: '同时下载字幕',
-  auto_subtitles: '包含自动字幕',
-  translated_subtitles: '包含翻译字幕',
-  subtitle_languages: '字幕语言',
-  subtitle_format: '字幕格式',
-  embed_subtitles: '嵌入字幕',
-  keep_subtitles: '保留独立字幕',
-  container: '视频格式',
-  audio_format: '音频格式',
-  audio_bitrate: '音频比特率（0 为自动）',
-  video_codec: '视频编码',
-  format_ids: '精确格式',
-  format_sort: '格式优先顺序',
-  merge_audio: '保留多个音轨',
-  thumbnail: '下载封面',
-  embed_thumbnail: '嵌入封面',
-  crop_artwork: '封面裁成方形',
-  metadata: '写入媒体信息',
-  chapters: '保留章节',
-  split_chapters: '按章节拆分',
-  clip_start: '片段开始秒数',
-  clip_end: '片段结束秒数',
-  sponsorblock: '移除片段类型',
-  rate_kbps: '速度上限 KB/s（0 不限）',
-  concurrent_fragments: '并行片段数',
-  retries: '失败重试次数',
-  force_ipv4: '使用 IPv4',
-  proxy: '代理地址',
-  restrict_filenames: '简化文件名',
-  skip_existing: '跳过已核验的相同下载',
-  filename_template: '文件名格式',
-  custom_args: '下载调节参数',
-  folder_layout: '目录整理方式',
-};
-const active = (job: MediaJob) => ['queued', 'running'].includes(job.state);
-const sponsorHelp =
-  'YouTube 可填 sponsor、intro、outro 等，多个分类用逗号分隔；依据 SponsorBlock 社区标注移除，字幕与章节同步调整。与仅字幕、按章节拆分请分别建立任务。';
-const states: Record<string, string> = {
-  queued: '排队中',
-  running: '下载中',
-  completed: '已完成',
-  cancelled: '已取消',
-  interrupted: '上次中断',
-  error: '失败',
-};
+import { MediaSourcePanel } from './MediaSourcePanel';
+import { MediaJobList } from './MediaJobList';
+import { type LoginProfile, type Options, active } from './media-download-shared';
 export function MediaDownloads({ visible }: { visible: boolean }) {
   const [profiles, setProfiles] = useState<LoginProfile[]>([]),
     [profileName, setProfileName] = useState(''),
@@ -291,179 +242,17 @@ export function MediaDownloads({ visible }: { visible: boolean }) {
         </button>
       </div>
       {source && (
-        <div className="media-source">
-          <h4>{source.title}</h4>
-          {source.playlist ? (
-            <>
-              <p className="hint">
-                只下载勾选条目。{source.limited ? '目录只列出前 100 项。' : ''}
-              </p>
-              <div className="batch-options">
-                {source.entries?.map((item) => (
-                  <label key={item.url}>
-                    <input
-                      type="checkbox"
-                      disabled={busy}
-                      checked={selected.includes(item.url)}
-                      onChange={(e) =>
-                        setSelected(
-                          e.target.checked
-                            ? [...selected, item.url]
-                            : selected.filter((link) => link !== item.url),
-                        )
-                      }
-                    />
-                    {item.title}
-                  </label>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="hint">
-              {source.duration && source.duration > 0
-                ? '时长 ' + Math.round(source.duration) + ' 秒'
-                : '时长未提供'}{' '}
-              · 可用字幕 {source.subtitles?.join('、') || '未提供'}
-            </p>
-          )}
-          <div className="media-options">
-            {[
-              'height',
-              'audio_only',
-              'subtitle_only',
-              'subtitles',
-              'container',
-              'audio_format',
-            ].map((key) => (
-              <label key={key}>
-                {labels[key]}
-                {typeof options[key] === 'boolean' ? (
-                  <input
-                    type="checkbox"
-                    checked={!!options[key]}
-                    disabled={busy}
-                    onChange={(e) => set(key, e.target.checked)}
-                  />
-                ) : (
-                  <select
-                    disabled={busy}
-                    value={String(options[key])}
-                    onChange={(e) =>
-                      set(key, key === 'height' ? Number(e.target.value) : e.target.value)
-                    }
-                  >
-                    {(enums[key] || []).map((value) => (
-                      <option key={value} value={value}>
-                        {value === 0
-                          ? '自动'
-                          : value === 'auto'
-                            ? '自动'
-                            : value === 'best'
-                              ? '最高质量'
-                              : value}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </label>
-            ))}
-          </div>
-          <details className="media-advanced">
-            <summary>更多下载选项</summary>
-            <div className="media-options">
-              {Object.keys(labels)
-                .filter(
-                  (key) =>
-                    ![
-                      'height',
-                      'audio_only',
-                      'subtitle_only',
-                      'subtitles',
-                      'container',
-                      'audio_format',
-                    ].includes(key),
-                )
-                .map((key) => (
-                  <label key={key}>
-                    {labels[key]}
-                    {typeof options[key] === 'boolean' ? (
-                      <input
-                        type="checkbox"
-                        checked={!!options[key]}
-                        disabled={busy}
-                        onChange={(e) => set(key, e.target.checked)}
-                      />
-                    ) : enums[key] ? (
-                      <select
-                        disabled={busy}
-                        value={String(options[key])}
-                        onChange={(e) => set(key, e.target.value)}
-                      >
-                        {enums[key]
-                          .filter((value) => value !== 'aria2c')
-                          .map((value) => (
-                            <option key={value} value={value}>
-                              {value === 'auto' ? '自动' : value === 'best' ? '最高质量' : value}
-                            </option>
-                          ))}
-                      </select>
-                    ) : (
-                      <input
-                        disabled={busy}
-                        type={
-                          typeof options[key] === 'number' ||
-                          ['clip_start', 'clip_end'].includes(key)
-                            ? 'number'
-                            : 'text'
-                        }
-                        value={options[key] === null ? '' : String(options[key] ?? '')}
-                        onChange={(e) =>
-                          set(
-                            key,
-                            ['clip_start', 'clip_end'].includes(key)
-                              ? e.target.value === ''
-                                ? null
-                                : Number(e.target.value)
-                              : typeof options[key] === 'number'
-                                ? Number(e.target.value)
-                                : e.target.value,
-                          )
-                        }
-                        title={key === 'sponsorblock' ? sponsorHelp : undefined}
-                        placeholder={
-                          key === 'format_ids'
-                            ? '自动选择；可填下方编号'
-                            : key === 'sponsorblock'
-                              ? '留空不移除；例如 sponsor,intro'
-                              : undefined
-                        }
-                      />
-                    )}
-                  </label>
-                ))}
-            </div>
-            {source.formats?.length && (
-              <details>
-                <summary>查看精确格式编号</summary>
-                <div className="media-format-list">
-                  {source.formats.map((f) => (
-                    <p key={f.id}>
-                      {f.id} · {f.height || '音频'} · {f.extension} · {f.video_codec} /{' '}
-                      {f.audio_codec}
-                    </p>
-                  ))}
-                </div>
-              </details>
-            )}
-          </details>
-          <button
-            className="primary"
-            disabled={busy || (source.playlist && !selected.length)}
-            onClick={() => void run(enqueue)}
-          >
-            下载所选媒体（{source.playlist ? selected.length : 1}）
-          </button>
-        </div>
+        <MediaSourcePanel
+          source={source}
+          busy={busy}
+          selected={selected}
+          setSelected={setSelected}
+          options={options}
+          set={set}
+          enums={enums}
+          run={run}
+          enqueue={enqueue}
+        />
       )}
       {notice && (
         <p className="learning-status" role="status">
@@ -475,63 +264,7 @@ export function MediaDownloads({ visible }: { visible: boolean }) {
           {error}
         </p>
       )}
-      <div className="media-jobs">
-        {jobs.map((job) => (
-          <article key={job.id}>
-            <div>
-              <strong>{job.title}</strong>
-              <p>
-                {states[job.state] || job.state}
-                {job.progress.total
-                  ? ` · ${Math.min(100, Math.round(((job.progress.downloaded || 0) / job.progress.total) * 100))}%`
-                  : ''}
-              </p>
-              {job.error_message && (
-                <p className="hint" role="alert">
-                  {job.error_message}
-                </p>
-              )}
-              {job.warning && <p className="hint">{job.warning}</p>}
-            </div>
-            <div className="row">
-              {active(job) ? (
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      await invoke('media:cancel', { id: job.id });
-                    })
-                  }
-                >
-                  取消下载
-                </button>
-              ) : job.state === 'completed' ? (
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      await invoke('media:open', { id: job.id });
-                    })
-                  }
-                >
-                  查看下载文件
-                </button>
-              ) : (
-                <button
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      await invoke('media:retry', { id: job.id });
-                    })
-                  }
-                >
-                  继续下载
-                </button>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
+      <MediaJobList jobs={jobs} busy={busy} run={run} />
     </section>
   );
 }

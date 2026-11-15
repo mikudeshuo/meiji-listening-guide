@@ -1,5 +1,5 @@
 import type { LectureDetail } from '../../shared/types';
-import { Notes } from './CoursePanels';
+import { Notes } from './Notes';
 import { invoke } from './ipc';
 
 export function NotesTab({

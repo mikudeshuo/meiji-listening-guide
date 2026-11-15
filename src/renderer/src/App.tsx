@@ -31,14 +31,9 @@ import type {
 } from '../../shared/types';
 import { milliseconds } from '../../shared/srt';
 import { invoke } from './ipc';
-import {
-  NewCourse,
-  NewLecture,
-  AddTranscript,
-  AddCourseware,
-  Materials,
-  SettingsPanel,
-} from './CoursePanels';
+import { NewCourse, NewLecture, AddTranscript, AddCourseware } from './CoursePanels';
+import { SettingsPanel } from './SettingsPanel';
+import { Materials } from './Materials';
 import { errorMessage } from '../../shared/errors';
 import { IconRail } from './IconRail';
 import { CourseSidebar } from './CourseSidebar';
