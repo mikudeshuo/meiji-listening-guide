@@ -1,7 +1,6 @@
-import { LearningRail, type LearningView } from './LearningNav';
-import { KnowledgeBase, KnowledgeIcon } from './KnowledgeBase';
-import { BiliResources, ResourceIcon } from './BiliResources';
-import { VisualAnalysis, VisualIcon } from './VisualAnalysis';
+import { KnowledgeBase } from './KnowledgeBase';
+import { BiliResources } from './BiliResources';
+import { VisualAnalysis } from './VisualAnalysis';
 import './knowledge.css';
 import { Study } from './Study';
 import './study.css';
@@ -13,30 +12,14 @@ import {
   resolveAppearance,
   type AppearanceState,
 } from '../../shared/appearance';
-import { CourseList } from './CourseList';
 import { sortCoursesForNavigation } from '../../shared/course-groups';
-import { ThemeIcon } from './ThemeIcon';
 import { IdentityContext, IdentityEditor } from './Identity';
 import { defaultIdentity, type Identity } from '../../shared/identity';
-import { PracticePanel } from './PracticePanel';
 import { StudyIcon } from './StudyIcon';
-import { ListeningBuddy } from './ListeningBuddy';
 import { FileManager } from './FileManager';
 import { LecturePicker } from './LecturePicker';
-import { FolderNavIcon } from './ManagementIcons';
 import { ZhiyunLogin } from './ZhiyunLogin';
 import { ZhiyunImporter } from './ZhiyunImporter';
-import { ChatMessage, ChatWaitingReply } from './ChatMessage';
-import { DshPlusIcon, DshSendIcon, DshStopIcon, DshChevronDownIcon } from './ChatIcons';
-import {
-  PptExtractNavIcon,
-  MessageNavIcon,
-  ModelNavIcon,
-  LoginNavIcon,
-  CloudExportNavIcon,
-  IdentityNavIcon,
-  AppearanceNavIcon,
-} from './SidebarIcons';
 import { useEffect, useRef, useState } from 'react';
 import type {
   ChatSession,
@@ -46,19 +29,26 @@ import type {
   Progress,
   Settings,
 } from '../../shared/types';
-import { milliseconds, time } from '../../shared/srt';
-import { basename, Modal, Markdown } from './UiParts';
+import { milliseconds } from '../../shared/srt';
 import { invoke } from './ipc';
 import {
   NewCourse,
   NewLecture,
   AddTranscript,
   AddCourseware,
-  Notes,
   Materials,
   SettingsPanel,
 } from './CoursePanels';
 import { errorMessage } from '../../shared/errors';
+import { IconRail } from './IconRail';
+import { CourseSidebar } from './CourseSidebar';
+import { ChatThread } from './ChatThread';
+import { SubtitlesTab } from './SubtitlesTab';
+import { NotesTab } from './NotesTab';
+import { PracticeTab } from './PracticeTab';
+import { Composer } from './Composer';
+import { SessionDraftDialog } from './SessionDraftDialog';
+import type { AppModal, LectureTab } from './app-state';
 export default function App() {
   const [sessionDraft, setSessionDraft] = useState<{
     detail: Detail;
@@ -74,29 +64,9 @@ export default function App() {
     [detail, setDetail] = useState<Detail | null>(null);
   const [lectureId, setLectureId] = useState(''),
     [lecture, setLecture] = useState<LectureDetail | null>(null),
-    [tab, setTab] = useState<'chat' | 'activity' | 'subtitles' | 'notes' | 'practice'>('chat');
+    [tab, setTab] = useState<LectureTab>('chat');
   const [settings, setSettings] = useState<Settings | null>(null),
-    [modal, setModal] = useState<
-      | 'course'
-      | 'lecture'
-      | 'settings'
-      | 'materials'
-      | 'modelPicker'
-      | 'zhiyun'
-      | 'zhiyunLogin'
-      | 'courseware'
-      | 'transcript'
-      | 'files'
-      | 'identity'
-      | 'appearance'
-      | 'pptExtract'
-      | LearningView
-      | 'study'
-      | 'knowledge'
-      | 'biliResources'
-      | 'visual'
-      | null
-    >(null);
+    [modal, setModal] = useState<AppModal | null>(null);
   const [resourceUrl, setResourceUrl] = useState<string | undefined>();
   const [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
@@ -357,57 +327,20 @@ export default function App() {
           files={() => setModal('files')}
         />
         {sessionDraft && (
-          <Modal
-            title="新建会话"
-            close={() => {
-              if (!busy) setSessionDraft(null);
-            }}
-          >
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const draft = sessionDraft;
-                void task(async () => {
-                  const cid = draft.detail.course.id,
-                    next = await invoke('session:create', {
-                      courseId: cid,
-                      lectureId: draft.lectureId || undefined,
-                    });
-                  setSessions((v) => [...v, next]);
-                  selectedSessions.current[cid] = next.id;
-                  setCourseId(cid);
-                  setSessionId(next.id);
-                  if (cid === courseId && next.lecture_id) setLectureId(next.lecture_id);
-                  setTab('chat');
-                  setInput('');
-                  setSessionDraft(null);
-                });
-              }}
-            >
-              <label>
-                对应课次
-                <select
-                  aria-label="新会话对应课次"
-                  value={sessionDraft.lectureId}
-                  disabled={busy || !sessionDraft.detail.lectures.length}
-                  onChange={(e) => setSessionDraft({ ...sessionDraft, lectureId: e.target.value })}
-                >
-                  {sessionDraft.detail.lectures.length ? (
-                    sessionDraft.detail.lectures.map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.title}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="">暂无课次</option>
-                  )}
-                </select>
-              </label>
-              <button type="submit" className="primary" disabled={busy}>
-                创建会话
-              </button>
-            </form>
-          </Modal>
+          <SessionDraftDialog
+            busy={busy}
+            setSessionDraft={setSessionDraft}
+            sessionDraft={sessionDraft}
+            task={task}
+            setSessions={setSessions}
+            selectedSessions={selectedSessions}
+            setCourseId={setCourseId}
+            setSessionId={setSessionId}
+            courseId={courseId}
+            setLectureId={setLectureId}
+            setTab={setTab}
+            setInput={setInput}
+          />
         )}
         {modal === 'zhiyunLogin' && (
           <ZhiyunLogin
@@ -477,224 +410,35 @@ export default function App() {
             save={async (value) => setIdentity(await invoke('identity:save', { identity: value }))}
           />
         )}
-        <nav className="app-icon-rail">
-          <span className="rail-logo">
-            <ListeningBuddy />
-          </span>
-          <button
-            className={modal === null ? 'active' : ''}
-            title="课程对话"
-            aria-label="课程对话"
-            onClick={() => setModal(null)}
-          >
-            <MessageNavIcon />
-          </button>
-          <button
-            className={modal === 'settings' || modal === 'modelPicker' ? 'active' : ''}
-            title="模型库"
-            aria-label="模型库"
-            onClick={() => {
-              setSettingsApi(true);
-              setModal('settings');
-            }}
-          >
-            <ModelNavIcon />
-          </button>
-          <button
-            title="角色与头像"
-            aria-label="角色与头像"
-            className={modal === 'identity' ? 'active' : ''}
-            onClick={() => setModal('identity')}
-          >
-            <IdentityNavIcon />
-          </button>
-          <button
-            title="智云登录"
-            aria-label="智云登录"
-            className={modal === 'zhiyunLogin' ? 'active' : ''}
-            onClick={() => setModal('zhiyunLogin')}
-          >
-            <LoginNavIcon />
-          </button>
-          <button
-            title="智云搜索与导出"
-            aria-label="智云搜索与导出"
-            className={modal === 'zhiyun' ? 'active' : ''}
-            onClick={() => setModal('zhiyun')}
-          >
-            <CloudExportNavIcon />
-          </button>
-          <button
-            title="文件管理"
-            aria-label="文件管理"
-            className={modal === 'files' ? 'active' : ''}
-            onClick={() => setModal('files')}
-          >
-            <FolderNavIcon />
-          </button>
-          <button
-            title="聊天外观"
-            aria-label="聊天外观"
-            className={modal === 'appearance' ? 'active' : ''}
-            onClick={() => setModal('appearance')}
-          >
-            <AppearanceNavIcon />
-          </button>
-          <button
-            title="截取 PPT"
-            aria-label="截取 PPT"
-            className={modal === 'pptExtract' ? 'active' : ''}
-            onClick={() => setModal('pptExtract')}
-          >
-            <PptExtractNavIcon />
-          </button>
-          <LearningRail current={modal} select={setModal} />
-          <button
-            title="视频资源"
-            aria-label="视频资源"
-            className={modal === 'biliResources' ? 'active' : ''}
-            onClick={() => setModal('biliResources')}
-          >
-            <ResourceIcon />
-          </button>
-          <button
-            title="画面识别"
-            aria-label="画面识别"
-            className={modal === 'visual' ? 'active' : ''}
-            onClick={() => setModal('visual')}
-          >
-            <VisualIcon />
-          </button>
-          <button
-            title="知识库"
-            aria-label="知识库"
-            className={modal === 'knowledge' ? 'active' : ''}
-            onClick={() => setModal('knowledge')}
-          >
-            <KnowledgeIcon />
-          </button>
-          <button
-            title="课表与教材"
-            aria-label="课表与教材"
-            className={modal === 'study' ? 'active' : ''}
-            onClick={() => setModal('study')}
-          >
-            <StudyIcon name="notes" />
-          </button>
-          <div className="rail-spacer" />
-        </nav>
-        <aside className="sidebar">
-          <div className="brand">
-            <span className="brand-mark">
-              <ListeningBuddy />
-            </span>
-            <div>
-              <strong>梅酱的听课指南</strong>
-              <small>把老师的原话留下来</small>
-            </div>
-          </div>
-          <button className="new-course" onClick={() => setModal('course')}>
-            ＋ 新建课程
-          </button>
-          <div className="sidebar-label">
-            我的课程 <span>{courses.length}</span>
-          </div>
-          <CourseList
-            courses={courses}
-            selected={courseId}
-            busy={busy}
-            sessions={sessions}
-            selectedSession={sessionId}
-            removeSession={async (cid, sid) => {
-              const ok = await task(async () => {
-                const remaining = await invoke('session:delete', {
-                  courseId: cid,
-                  id: sid,
-                  confirmed: true,
-                });
-                setSessions((v) => [...v.filter((s) => s.course_id !== cid), ...remaining]);
-                if (selectedSessions.current[cid] === sid)
-                  selectedSessions.current[cid] = remaining[0].id;
-                if (cid === courseId) {
-                  if (sessionId === sid) {
-                    setSessionId(remaining[0].id);
-                    setInput('');
-                    setChatText('');
-                    setPendingChat('');
-                    request.current = '';
-                  }
-                  await reloadCourse(cid);
-                }
-              });
-              if (!ok) throw new Error('会话未删除，请查看错误提示');
-            }}
-            selectSession={(cid, sid) => {
-              selectedSessions.current[cid] = sid;
-              setCourseId(cid);
-              setSessionId(sid);
-              if (cid === courseId) {
-                const linked = sessions.find((s) => s.id === sid)?.lecture_id;
-                if (linked) setLectureId(linked);
-              }
-              setTab('chat');
-              setInput('');
-            }}
-            newSession={(cid) =>
-              void invoke('course:detail', { id: cid })
-                .then((d) => {
-                  const linked =
-                    cid === courseId
-                      ? sessions.find((s) => s.id === sessionId)?.lecture_id
-                      : undefined;
-                  setSessionDraft({
-                    detail: d,
-                    lectureId:
-                      linked ||
-                      (cid === courseId && d.lectures.some((l) => l.id === lectureId)
-                        ? lectureId
-                        : d.lectures[0]?.id) ||
-                      '',
-                  });
-                })
-                .catch((e) => setError(String(e)))
-            }
-            select={setCourseId}
-            remove={async (id) => {
-              const ok = await task(async () => {
-                await invoke('course:delete', { id, confirmed: true });
-                const remaining = await invoke('courses');
-                setCourses(remaining);
-                setSessions((v) => v.filter((s) => s.course_id !== id));
-                if (id === courseId) {
-                  setCourseId(remaining[0]?.id || '');
-                  setDetail(null);
-                  setLecture(null);
-                  setLectureId('');
-                  setTab('chat');
-                }
-              });
-              if (!ok) throw new Error('课程未删除，请查看错误提示');
-            }}
-          />
-          <div className="sidebar-bottom">
-            <button
-              onClick={() => {
-                if (settings) {
-                  const next = {
-                    ...settings,
-                    theme: settings.theme === 'light' ? 'dark' : 'light',
-                  } as Settings;
-                  void task(async () =>
-                    setSettings(await invoke('settings:save', { settings: next })),
-                  );
-                }
-              }}
-            >
-              <ThemeIcon dark={settings?.theme === 'dark'} />
-              {settings?.theme === 'dark' ? '切换浅色' : '切换深色'}
-            </button>
-          </div>
-        </aside>
+        <IconRail modal={modal} setModal={setModal} setSettingsApi={setSettingsApi} />
+        <CourseSidebar
+          setModal={setModal}
+          courses={courses}
+          courseId={courseId}
+          busy={busy}
+          sessions={sessions}
+          sessionId={sessionId}
+          task={task}
+          setSessions={setSessions}
+          selectedSessions={selectedSessions}
+          setSessionId={setSessionId}
+          setInput={setInput}
+          setChatText={setChatText}
+          setPendingChat={setPendingChat}
+          request={request}
+          reloadCourse={reloadCourse}
+          setCourseId={setCourseId}
+          setLectureId={setLectureId}
+          setTab={setTab}
+          setSessionDraft={setSessionDraft}
+          lectureId={lectureId}
+          setError={setError}
+          setCourses={setCourses}
+          setDetail={setDetail}
+          setLecture={setLecture}
+          settings={settings}
+          setSettings={setSettings}
+        />
         <main
           className={
             'workspace agent-workspace wallpaper-workspace ' + (tab === 'chat' ? 'chat-styled' : '')
@@ -797,52 +541,17 @@ export default function App() {
               </div>
               <div className="agent-scroll">
                 {tab === 'chat' && (
-                  <div className="agent-thread">
-                    {!detail?.messages.filter((m) => m.session_id === sessionId).length &&
-                      !pendingChat &&
-                      !chatText && (
-                        <div className="agent-empty">
-                          <h2>{lecture ? '这一讲，想从哪里开始？' : '今天要听哪一门课？'}</h2>
-                          <p>拖入语音识别原文和 PPT，或直接向听课助手提问。</p>
-                          <div className="suggestions">
-                            <button
-                              onClick={() => {
-                                setInput('本节课老师明确强调了哪些重点？');
-                              }}
-                            >
-                              提取教师重点
-                            </button>
-                            <button onClick={() => setModal('materials')}>整理课前资料</button>
-                            <button
-                              onClick={() => {
-                                setSourceDraft('');
-                                setModal('lecture');
-                              }}
-                            >
-                              添加语音识别原文
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    {detail?.messages
-                      .filter((m) => m.session_id === sessionId)
-                      .map((m) => (
-                        <ChatMessage key={m.id} role={m.role} content={m.content}>
-                          <Markdown text={m.content} />
-                        </ChatMessage>
-                      ))}
-                    {pendingChat && (
-                      <ChatMessage role="user" content={pendingChat} pending>
-                        <Markdown text={pendingChat} />
-                      </ChatMessage>
-                    )}
-                    {chatText && (
-                      <ChatMessage role="assistant" content={chatText} pending>
-                        <Markdown text={chatText} />
-                      </ChatMessage>
-                    )}
-                    <div ref={threadEnd} />
-                  </div>
+                  <ChatThread
+                    detail={detail}
+                    sessionId={sessionId}
+                    pendingChat={pendingChat}
+                    chatText={chatText}
+                    lecture={lecture}
+                    setInput={setInput}
+                    setModal={setModal}
+                    setSourceDraft={setSourceDraft}
+                    threadEnd={threadEnd}
+                  />
                 )}
                 {tab === 'activity' && (
                   <div className="activity-list">
@@ -912,521 +621,76 @@ export default function App() {
                       )}
                       <div className="tab-content">
                         {tab === 'subtitles' && (
-                          <>
-                            <div className="toolbar">
-                              <button
-                                className="primary"
-                                disabled={
-                                  busy ||
-                                  !lecture.lecture.transcript_path ||
-                                  !lecture.lecture.ppt_path
-                                }
-                                onClick={() => void task(() => generate('subtitles:generate'))}
-                              >
-                                <StudyIcon name="sparkle" />
-                                {lecture.correction
-                                  ? '继续校订字幕'
-                                  : lecture.segments.length
-                                    ? '重新校订字幕'
-                                    : '原文 + PPT 校订字幕'}
-                              </button>
-                              <button
-                                disabled={busy}
-                                onClick={() =>
-                                  void task(async () => {
-                                    await invoke('subtitles:import', { id: lectureId });
-                                    await reloadLecture();
-                                  })
-                                }
-                              >
-                                <StudyIcon name="upload" />
-                                导入 SRT
-                              </button>
-                              {lecture.segments.length > 0 && (
-                                <>
-                                  <button
-                                    disabled={busy || !!lecture.correction}
-                                    onClick={() =>
-                                      setSrtEdit(srtEdit === null ? lecture.srt : null)
-                                    }
-                                  >
-                                    <StudyIcon name="edit" />
-                                    {srtEdit === null ? '编辑字幕' : '退出编辑'}
-                                  </button>
-                                  <button onClick={() => exportResult('subtitles', 'srt')}>
-                                    <StudyIcon name="download" />
-                                    SRT
-                                  </button>
-                                  <button onClick={() => exportResult('subtitles', 'txt')}>
-                                    <StudyIcon name="download" />
-                                    TXT
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                            {lecture.correction && (
-                              <p className="hint">
-                                已保存 {lecture.correction.completed}/{lecture.correction.total}{' '}
-                                条，以下为已完成部分；点击继续校订可恢复剩余内容。
-                              </p>
-                            )}
-                            {srtEdit !== null ? (
-                              <>
-                                <p className="hint">保存修改后，旧笔记与练习会清空，需重新生成。</p>
-                                <textarea
-                                  className="srt-editor"
-                                  value={srtEdit}
-                                  onChange={(e) => setSrtEdit(e.target.value)}
-                                />
-                                <button
-                                  className="primary"
-                                  disabled={busy}
-                                  onClick={() =>
-                                    void task(async () => {
-                                      await invoke('subtitles:save', {
-                                        id: lectureId,
-                                        srt: srtEdit,
-                                      });
-                                      await reloadLecture();
-                                      setSrtEdit(null);
-                                    })
-                                  }
-                                >
-                                  校验并保存字幕
-                                </button>
-                              </>
-                            ) : lecture.segments.length ? (
-                              <>
-                                <input
-                                  className="search"
-                                  placeholder="搜索老师的原话…"
-                                  aria-label="搜索字幕"
-                                  value={search}
-                                  onChange={(e) => setSearch(e.target.value)}
-                                />
-                                <div className="transcript">
-                                  {lecture.segments
-                                    .filter((s) => s.text.includes(search))
-                                    .map((s, i) => (
-                                      <div className="subtitle" data-stamp={s.start} key={i}>
-                                        <button className="timestamp" onClick={() => jump(s.start)}>
-                                          <StudyIcon name="clock" />
-                                          {time(s.start, false)}
-                                        </button>
-                                        <div>
-                                          <p>{s.text}</p>
-                                          {s.uncertain && (
-                                            <small className="warning">待核对：{s.reason}</small>
-                                          )}
-                                          {s.originalText && s.originalText !== s.text && (
-                                            <details>
-                                              <summary>对照识别原文</summary>
-                                              <p>{s.originalText}</p>
-                                              <small>{s.reason}</small>
-                                            </details>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ))}
-                                </div>
-                              </>
-                            ) : (
-                              <div className="empty">
-                                <h3>完整记录，不做摘要</h3>
-                                <p>
-                                  先添加语音识别原文和 PPT，
-                                  <br />
-                                  再交给 Codex 识别与校订。原文保留，疑点明确标注。
-                                </p>
-                              </div>
-                            )}
-                          </>
+                          <SubtitlesTab
+                            busy={busy}
+                            lecture={lecture}
+                            task={task}
+                            generate={generate}
+                            lectureId={lectureId}
+                            reloadLecture={reloadLecture}
+                            setSrtEdit={setSrtEdit}
+                            srtEdit={srtEdit}
+                            exportResult={exportResult}
+                            search={search}
+                            setSearch={setSearch}
+                            jump={jump}
+                          />
                         )}
                         {tab === 'notes' && (
-                          <>
-                            <div className="toolbar">
-                              <button
-                                className="primary"
-                                disabled={busy || !lecture.segments.length || !!lecture.correction}
-                                onClick={() => void task(() => generate('notes:generate'))}
-                              >
-                                {lecture.notes ? '重新提取重点' : '生成听课重点笔记'}
-                              </button>
-                              {lecture.notes && (
-                                <>
-                                  <button onClick={() => exportResult('notes', 'md')}>
-                                    Markdown
-                                  </button>
-                                  <button onClick={() => exportResult('notes', 'docx')}>
-                                    Word
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                            {lecture.notes ? (
-                              <Notes
-                                notes={lecture.notes}
-                                jump={jump}
-                                disabled={busy}
-                                save={(notes) =>
-                                  task(async () => {
-                                    await invoke('notes:save', { id: lectureId, notes });
-                                    await reloadLecture();
-                                  })
-                                }
-                              />
-                            ) : (
-                              <div className="empty">
-                                <h3>有证据，才算重点</h3>
-                                <p>字幕完成后，提取“要考”“很重要”“要求掌握”等明确表态。</p>
-                              </div>
-                            )}
-                          </>
+                          <NotesTab
+                            busy={busy}
+                            lecture={lecture}
+                            task={task}
+                            generate={generate}
+                            exportResult={exportResult}
+                            jump={jump}
+                            lectureId={lectureId}
+                            reloadLecture={reloadLecture}
+                          />
                         )}
                         {tab === 'practice' && (
-                          <>
-                            <div className="toolbar">
-                              <button
-                                className="primary"
-                                disabled={busy || !lecture.segments.length || !!lecture.correction}
-                                onClick={() => void task(() => generate('practice:generate'))}
-                              >
-                                <StudyIcon name="practice" />
-                                生成课后练习
-                              </button>
-                              {lecture.practice &&
-                                [
-                                  ...lecture.practice.past,
-                                  ...lecture.practice.extended,
-                                  ...(lecture.practice.generated || []),
-                                ].some((q) => !q.answer || !q.explanation) && (
-                                  <button
-                                    disabled={busy}
-                                    onClick={() => void task(() => generate('practice:prepare'))}
-                                  >
-                                    <StudyIcon name="sparkle" />
-                                    补全已有答案与详解
-                                  </button>
-                                )}
-                              {lecture.practice &&
-                                ['md', 'docx', 'pdf'].map((f) => (
-                                  <button key={f} onClick={() => exportResult('practice', f)}>
-                                    <StudyIcon name="download" />
-                                    {f === 'md' ? 'Markdown' : f === 'docx' ? 'Word' : 'PDF'}
-                                  </button>
-                                ))}
-                            </div>
-                            <label className="practice-options">
-                              <input
-                                type="checkbox"
-                                checked={withSearch}
-                                disabled={busy}
-                                onChange={(e) => setWithSearch(e.target.checked)}
-                              />
-                              搜索有来源的拓展题（较慢，需配置搜索服务）
-                            </label>
-                            {lecture.practice ? (
-                              <PracticePanel
-                                key={lectureId}
-                                data={lecture.practice}
-                                disabled={busy}
-                                submit={async (group, index, response) => {
-                                  await invoke('practice:submit', {
-                                    id: lectureId,
-                                    group,
-                                    index,
-                                    response,
-                                  });
-                                  await reloadLecture();
-                                }}
-                                answer={async (group, index) => {
-                                  let failure: unknown;
-                                  const ok = await task(async () => {
-                                    try {
-                                      await invoke('practice:answer', {
-                                        id: lectureId,
-                                        group,
-                                        index,
-                                      });
-                                    } catch (e) {
-                                      failure = e;
-                                    } finally {
-                                      await reloadLecture();
-                                    }
-                                  });
-                                  if (failure) throw failure;
-                                  if (!ok) throw new Error('请等待当前任务完成，再补全详解');
-                                }}
-                                reset={async (group, index) => {
-                                  await invoke('practice:reset', { id: lectureId, group, index });
-                                  await reloadLecture();
-                                }}
-                              />
-                            ) : (
-                              <div className="empty">
-                                <h3>围绕这一讲练习</h3>
-                                <p>
-                                  完成字幕后即可生成 AI 自测题和参考解析。
-                                  <br />
-                                  导入并拆题后，相关历年真题会单独列出。
-                                </p>
-                              </div>
-                            )}
-                          </>
+                          <PracticeTab
+                            busy={busy}
+                            lecture={lecture}
+                            task={task}
+                            generate={generate}
+                            exportResult={exportResult}
+                            withSearch={withSearch}
+                            setWithSearch={setWithSearch}
+                            lectureId={lectureId}
+                            reloadLecture={reloadLecture}
+                          />
                         )}
                       </div>
                     </>
                   ))}
               </div>
-              <section className="agent-composer">
-                {pendingChat && <ChatWaitingReply streaming={!!chatText} />}
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!sessionId || !input.trim()) return;
-                    const id = courseId,
-                      lid = lectureId,
-                      sid = sessionId,
-                      content = input;
-                    setTab('chat');
-                    void task(async () => {
-                      request.current = crypto.randomUUID();
-                      setChatText('');
-                      setPendingChat(content);
-                      setInput('');
-                      try {
-                        await invoke('chat', {
-                          courseId: id,
-                          lectureId: lid || undefined,
-                          sessionId: sid,
-                          content,
-                          requestId: request.current,
-                        });
-                      } finally {
-                        try {
-                          await reloadCourse(id);
-                        } finally {
-                          setChatText('');
-                          setPendingChat('');
-                        }
-                      }
-                    });
-                  }}
-                >
-                  {sourceDraft && (
-                    <div className="draft-attachment">
-                      <span>▤</span>
-                      <div>
-                        <strong>{basename(sourceDraft)}</strong>
-                        <input
-                          aria-label="拖入文件完整路径"
-                          readOnly
-                          value={sourceDraft}
-                          title={sourceDraft}
-                        />
-                      </div>
-                      <button type="button" disabled={busy} onClick={() => setModal('lecture')}>
-                        建立课次
-                      </button>
-                      <button
-                        type="button"
-                        aria-label="移除待导入文件"
-                        onClick={() => setSourceDraft('')}
-                      >
-                        ×
-                      </button>
-                    </div>
-                  )}
-                  <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="输入消息，或拖入语音原文、PPT…"
-                    aria-label="追问内容"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        if (input.trim() && !busy) e.currentTarget.form?.requestSubmit();
-                      }
-                    }}
-                  />
-                  <div className="composer-controls">
-                    <div className="attachment-menu-anchor">
-                      <button
-                        type="button"
-                        className="round-button"
-                        aria-label="附件与工具"
-                        aria-expanded={menu}
-                        onClick={() => setMenu(!menu)}
-                      >
-                        <DshPlusIcon size={20} />
-                      </button>
-                      {menu && (
-                        <div className="attachment-menu" role="menu">
-                          <button
-                            type="button"
-                            role="menuitem"
-                            disabled={busy}
-                            onClick={() => {
-                              setMenu(false);
-                              setModal(lectureId ? 'transcript' : 'lecture');
-                            }}
-                          >
-                            <span>⌕</span>添加语音识别原文
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            disabled={busy}
-                            onClick={() => {
-                              setMenu(false);
-                              setModal(lectureId ? 'courseware' : 'lecture');
-                            }}
-                          >
-                            <span>▤</span>添加 PPT/课件
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                              setMenu(false);
-                              setModal('zhiyun');
-                            }}
-                          >
-                            <span aria-hidden="true">
-                              <svg
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.7"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <path d="M7 17H6a4 4 0 0 1-.5-8 6.5 6.5 0 0 1 12.4-1A4.5 4.5 0 0 1 18 17h-1M12 12v9m-3-3 3 3 3-3" />
-                              </svg>
-                            </span>
-                            智云课堂 · 搜索与导出
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                              setMenu(false);
-                              setModal('materials');
-                            }}
-                          >
-                            <span>▤</span>课前资料
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                              setMenu(false);
-                              setTab('chat');
-                            }}
-                          >
-                            <span>☷</span>聊天记录
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                              setMenu(false);
-                              void task(() => invoke('library:open'));
-                            }}
-                          >
-                            <span>▱</span>资料文件夹
-                          </button>
-                          <div className="menu-divider" />
-                          <button
-                            type="button"
-                            role="menuitem"
-                            disabled={!lecture || busy}
-                            onClick={() => {
-                              setMenu(false);
-                              setTab('subtitles');
-                              void task(() => generate('subtitles:generate'));
-                            }}
-                          >
-                            <span>▶</span>校订完整字幕
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            disabled={!lecture?.segments.length || !!lecture?.correction || busy}
-                            onClick={() => {
-                              setMenu(false);
-                              setTab('notes');
-                              void task(() => generate('notes:generate'));
-                            }}
-                          >
-                            <span>✎</span>
-                            <StudyIcon name="sparkle" />
-                            提取重点笔记
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            disabled={!lecture?.segments.length || !!lecture?.correction || busy}
-                            onClick={() => {
-                              setMenu(false);
-                              setTab('practice');
-                              void task(() => generate('practice:generate'));
-                            }}
-                          >
-                            <span>▦</span>
-                            <StudyIcon name="practice" />
-                            生成课后练习
-                          </button>
-                          <div className="menu-divider" />
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => {
-                              setMenu(false);
-                              setTab('activity');
-                            }}
-                          >
-                            <span>↗</span>任务轨迹
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="composer-model-trigger"
-                      aria-label="选择对话模型"
-                      aria-haspopup="dialog"
-                      aria-expanded={modal === 'modelPicker'}
-                      disabled={busy}
-                      onClick={() => setModal('modelPicker')}
-                    >
-                      <span className={`composer-brand ${modelBrand}`} aria-hidden="true">
-                        {modelBrand === 'custom' && <ModelNavIcon />}
-                      </span>
-                      <span className="composer-model-name">
-                        {activeProfile?.model || 'Codex · 自动'}
-                      </span>
-                      <DshChevronDownIcon />
-                    </button>
-                    {busy ? (
-                      <button
-                        type="button"
-                        className="send-round"
-                        aria-label="停止任务"
-                        onClick={() => void invoke('cancel')}
-                      >
-                        <DshStopIcon size={20} />
-                      </button>
-                    ) : (
-                      <button className="send-round" aria-label="发送消息" disabled={!input.trim()}>
-                        <DshSendIcon size={20} />
-                      </button>
-                    )}
-                  </div>
-                </form>
-              </section>
+              <Composer
+                pendingChat={pendingChat}
+                chatText={chatText}
+                sessionId={sessionId}
+                input={input}
+                courseId={courseId}
+                lectureId={lectureId}
+                setTab={setTab}
+                task={task}
+                request={request}
+                setChatText={setChatText}
+                setPendingChat={setPendingChat}
+                setInput={setInput}
+                reloadCourse={reloadCourse}
+                sourceDraft={sourceDraft}
+                busy={busy}
+                setModal={setModal}
+                setSourceDraft={setSourceDraft}
+                menu={menu}
+                setMenu={setMenu}
+                lecture={lecture}
+                generate={generate}
+                modal={modal}
+                modelBrand={modelBrand}
+                activeProfile={activeProfile}
+              />
             </>
           )}
         </main>
