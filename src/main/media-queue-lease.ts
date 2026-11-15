@@ -2,12 +2,7 @@ import Database from 'better-sqlite3';
 import { mkdir, lstat, realpath } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 /** SQLite's OS locks release on process exit; a PID file alone cannot provide this guarantee. */
-export async function acquireDownloadQueue(
-  root: string,
-  ownerName:
-    | 'native-download-owner.sqlite'
-    | 'native-research-owner.sqlite' = 'native-download-owner.sqlite',
-) {
+export async function acquireDownloadQueue(root: string) {
   const directory = resolve(root);
   await mkdir(directory, { recursive: true });
   if (
@@ -15,7 +10,7 @@ export async function acquireDownloadQueue(
     resolve(await realpath(directory)).toLowerCase() !== directory.toLowerCase()
   )
     throw new Error('下载进程目录无效');
-  const path = join(directory, ownerName);
+  const path = join(directory, 'native-download-owner.sqlite');
   try {
     const file = await lstat(path);
     if (!file.isFile() || file.isSymbolicLink()) throw new Error('下载进程所有权文件无效');

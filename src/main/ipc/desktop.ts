@@ -39,10 +39,8 @@ export function createDesktopHandler(
     | 'root'
     | 'saveVideoPdf'
     | 'settings'
-    | 'toolsBackend'
     | 'videoPpt'
     | 'videoProgress'
-    | 'visualConnection'
     | 'window'
     | 'zhiyun'
     | 'zhiyunBrowser'
@@ -67,10 +65,8 @@ export function createDesktopHandler(
     root,
     saveVideoPdf,
     settings,
-    toolsBackend,
     videoPpt,
     videoProgress,
-    visualConnection,
     window,
     zhiyun,
     zhiyunBrowser,
@@ -126,7 +122,7 @@ export function createDesktopHandler(
           return runtime.status();
         case 'runtime:install':
           return job('安装运行组件', async (signal) => {
-            if (toolsBackend.started || media.started || knowledge.started)
+            if (media.started || knowledge.started)
               throw new Error('请重启软件后先安装组件，再打开后台任务');
             const picked = await dialog.showOpenDialog(window, {
               title: '选择同版本组件文件夹',
@@ -482,18 +478,8 @@ export function createDesktopHandler(
               codex: next.codex,
             });
           if (changed && jobs.size) throw new Error('任务运行中，请完成或取消后再更换模型连接');
-          const before = visualConnection(),
-            saved = settings.save(next);
+          const saved = settings.save(next);
           if (changed) deepseek.dispose();
-          if (toolsBackend.started && before !== visualConnection())
-            await toolsBackend.request('configure', {
-              connection: visualConnection(),
-              model:
-                (saved.connection || 'codex') === 'codex'
-                  ? 'Codex'
-                  : saved.profiles.find((item) => item.id === saved.activeProfile)?.model ||
-                    '未配置',
-            });
           return saved;
         }
         case 'settings:test':

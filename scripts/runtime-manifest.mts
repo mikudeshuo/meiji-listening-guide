@@ -6,17 +6,13 @@ import { fileURLToPath } from 'node:url';
 import type { RuntimeFile, RuntimeManifest } from '../src/shared/runtime.ts';
 
 const catalog = [
-  ['knowledge', '知识库、研究与通讯后台', 'knowledge'],
+  ['knowledge', '知识库后台', 'knowledge'],
   ['asr', '离线字幕模型', 'asr'],
   ['codex', 'Codex 与 DeepSeek 连接', 'codex'],
   ['video', '视频下载与处理工具', 'video'],
 ] as const;
 function included(id: string, path: string) {
-  if (id === 'knowledge')
-    return (
-      path.startsWith('onnx-bge/') ||
-      ['vendor/NapCat.Shell.Windows.Node.zip', 'BiliSum-LICENSE'].includes(path)
-    );
+  if (id === 'knowledge') return path.startsWith('onnx-bge/') || path === 'BiliSum-LICENSE';
   if (id === 'asr') return path.startsWith('onnx-small/');
   if (id === 'video')
     return [
@@ -41,12 +37,7 @@ export async function generate(root: string): Promise<RuntimeManifest> {
           source = join(path, entry.name);
         if (entry.isSymbolicLink()) throw new Error('运行资源不能包含目录链接：' + relative);
         if (entry.isDirectory()) {
-          if (
-            id === 'knowledge' &&
-            !['onnx-bge/', 'vendor/'].some(
-              (prefix) => prefix.startsWith(relative + '/') || relative.startsWith(prefix),
-            )
-          )
+          if (id === 'knowledge' && relative !== 'onnx-bge' && !relative.startsWith('onnx-bge/'))
             continue;
           if (id === 'asr' && relative !== 'onnx-small' && !relative.startsWith('onnx-small/'))
             continue;

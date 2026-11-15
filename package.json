@@ -30,12 +30,9 @@
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.1",
-    "ajv": "8.20.0",
     "better-sqlite3": "^12.4.1",
-    "better-sqlite3-multiple-ciphers": "13.0.3",
     "docx": "^9.5.1",
     "entities": "8.1.0",
-    "htmlparser2": "12.0.0",
     "iconv-lite": "^0.7.0",
     "jschardet": "^3.1.4",
     "jszip": "^3.10.2",
@@ -99,7 +96,6 @@
         "to": "knowledge",
         "filter": [
           "onnx-bge/**",
-          "vendor/NapCat.Shell.Windows.Node.zip",
           "BiliSum-LICENSE"
         ]
       },
@@ -159,7 +155,6 @@
     ],
     "asarUnpack": [
       "node_modules/@jitl/**/*.wasm",
-      "node_modules/better-sqlite3-multiple-ciphers/prebuilds/win32-x64.node",
       "node_modules/better-sqlite3/**",
       "node_modules/koffi/**",
       "node_modules/@koromix/koffi-win32-x64/**"

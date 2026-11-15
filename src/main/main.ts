@@ -4,7 +4,6 @@ import { diagnostic } from './diagnostics';
 import { createKnowledgeHandler } from './ipc/knowledge';
 import { createCoursewareHandler } from './ipc/courseware';
 import { createResourcesHandler } from './ipc/resources';
-import { createResearchHandler } from './ipc/research';
 import { createStudyHandler } from './ipc/study';
 import { createDesktopHandler } from './ipc/desktop';
 import { createCoursesHandler } from './ipc/courses';
@@ -12,7 +11,6 @@ import { createLearningHandler } from './ipc/learning';
 import { AppearanceStore } from './appearance';
 import { KnowledgeBase } from './knowledge';
 import { MediaBackend } from './media';
-import { NativeResearchBackend } from './research';
 import { VisualTasks } from './visual';
 import { SubtitleSync, subtitleLocator } from './subtitle-sync';
 import { SubtitleDerived } from './subtitle-derived';
@@ -213,22 +211,6 @@ async function startApplication() {
         : null;
     return sha256Json([connection, !testApi && connection === 'codex' ? value.codex : profile]);
   };
-  const toolsBackend = new NativeResearchBackend(
-    join(libraryRoot, '知识库数据'),
-    async (request, signal) => {
-      if (request.connection !== visualConnection())
-        throw new Error('模型配置已改变，旧研究任务停止');
-      return api.chat(
-        [
-          { role: 'system', content: request.system },
-          { role: 'user', content: request.user },
-        ],
-        undefined,
-        signal,
-      );
-    },
-    resources,
-  );
   const subtitleSync = new SubtitleSync(join(libraryRoot, '字幕同步记录'), libraryRoot);
   const subtitleDerived = new SubtitleDerived(join(libraryRoot, '笔记生成记录'), libraryRoot);
   const biliSession = session.fromPartition('persist:meijiang-bili-resources');
@@ -580,7 +562,6 @@ async function startApplication() {
     subtitleSync,
     syncDependencies,
     testApi,
-    toolsBackend,
     videoPpt,
     videoProgress,
     videoSeriesCache,
@@ -594,7 +575,6 @@ async function startApplication() {
     createKnowledgeHandler(context),
     createCoursewareHandler(context),
     createResourcesHandler(context),
-    createResearchHandler(context),
     createStudyHandler(context),
     createDesktopHandler(context),
     createCoursesHandler(context),
@@ -627,7 +607,7 @@ async function startApplication() {
     for (const c of jobs.values()) c.abort();
     knowledge.dispose();
     zhiyunBrowser.dispose();
-    await Promise.allSettled([media.dispose(), toolsBackend.dispose()]);
+    await Promise.allSettled([media.dispose()]);
     codex.dispose();
     deepseek.dispose();
   };

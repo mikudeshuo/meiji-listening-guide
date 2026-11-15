@@ -2,8 +2,6 @@ import { LearningRail, type LearningView } from './LearningNav';
 import { KnowledgeBase, KnowledgeIcon } from './KnowledgeBase';
 import { BiliResources, ResourceIcon } from './BiliResources';
 import { VisualAnalysis, VisualIcon } from './VisualAnalysis';
-import { ToolsWorkbench, ToolsIcon } from './ToolsWorkbench';
-import { Communications, CommunicationIcon } from './Communications';
 import './knowledge.css';
 import { Study } from './Study';
 import './study.css';
@@ -97,8 +95,6 @@ export default function App() {
       | 'knowledge'
       | 'biliResources'
       | 'visual'
-      | 'tools'
-      | 'communications'
       | null
     >(null);
   const [resourceUrl, setResourceUrl] = useState<string | undefined>();
@@ -323,8 +319,6 @@ export default function App() {
         {modal === 'study' && (
           <Study courses={courses} close={() => setModal(null)} refresh={reloadCourse} />
         )}
-        <Communications visible={modal === 'communications'} close={() => setModal(null)} />
-        <ToolsWorkbench visible={modal === 'tools'} close={() => setModal(null)} />
         <VisualAnalysis visible={modal === 'visual'} close={() => setModal(null)} />
         <KnowledgeBase visible={modal === 'knowledge'} close={() => setModal(null)} />
         <BiliResources
@@ -582,22 +576,6 @@ export default function App() {
             onClick={() => setModal('knowledge')}
           >
             <KnowledgeIcon />
-          </button>
-          <button
-            title="通讯助手"
-            aria-label="通讯助手"
-            className={modal === 'communications' ? 'active' : ''}
-            onClick={() => setModal('communications')}
-          >
-            <CommunicationIcon />
-          </button>
-          <button
-            title="工具与工作流"
-            aria-label="工具与工作流"
-            className={modal === 'tools' ? 'active' : ''}
-            onClick={() => setModal('tools')}
-          >
-            <ToolsIcon />
           </button>
           <button
             title="课表与教材"

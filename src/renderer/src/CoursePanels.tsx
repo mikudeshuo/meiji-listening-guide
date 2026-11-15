@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { CourseFile, Detail, LectureNotes, PastQuestion, Settings } from '../../shared/types';
 import { Modal, FilePicker } from './UiParts';
 import { invoke } from './ipc';
+import { RuntimePanel } from './RuntimePanel';
 export function NewCourse({
   close,
   create,
@@ -623,6 +624,7 @@ export function SettingsPanel({
         ['deepseek', 'DeepSeek API'],
         ['search', '搜索与主题'],
         ['prompts', '提示词'],
+        ['runtime', '运行组件'],
       ].map(([id, name]) => (
         <button className={section === id ? 'active' : ''} key={id} onClick={() => setSection(id)}>
           {name}
@@ -681,6 +683,7 @@ export function SettingsPanel({
           ['deepseek', 'DeepSeek API'],
           ['search', '搜索与主题'],
           ['prompts', '提示词'],
+          ['runtime', '运行组件'],
         ].map(([id, name]) => (
           <button
             key={id}
@@ -746,6 +749,7 @@ export function SettingsPanel({
           />
         </>
       )}
+      {section === 'runtime' && <RuntimePanel />}
       <footer>
         {error && (
           <div className="alert" role="alert">
