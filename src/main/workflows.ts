@@ -247,6 +247,7 @@ export class Workflows {
       if (saved && !signal?.aborted)
         throw new Error(
           `已保存 ${saved.segments.length}/${saved.total} 条，点击继续校订可从断点恢复。${error instanceof Error ? error.message : '当前批次失败'}`,
+          { cause: error },
         );
       throw error;
     }

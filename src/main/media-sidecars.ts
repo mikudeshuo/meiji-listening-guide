@@ -34,7 +34,8 @@ export async function mediaSidecars(
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       const item = await lstat(path);
-      if (!item.isFile() || item.isSymbolicLink()) throw new Error('附属文件路径无效');
+      if (!item.isFile() || item.isSymbolicLink())
+        throw new Error('附属文件路径无效', { cause: error });
     }
     if ((await readFile(path, 'utf8')) !== output.text)
       throw new Error('附属文件与当前来源不一致，保留原文件');

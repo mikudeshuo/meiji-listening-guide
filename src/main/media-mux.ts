@@ -107,7 +107,8 @@ export class NativeMediaMux {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       await localFile(source);
-      if (!bytes.equals(await readFile(source))) throw new Error('封面恢复文件已改变');
+      if (!bytes.equals(await readFile(source)))
+        throw new Error('封面恢复文件已改变', { cause: error });
     }
     const raw = await this.command(
       'ffprobe.exe',
@@ -196,7 +197,8 @@ export class NativeMediaMux {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       await localFile(list);
-      if ((await readFile(list, 'utf8')) !== body) throw new Error('视频拼接列表已改变');
+      if ((await readFile(list, 'utf8')) !== body)
+        throw new Error('视频拼接列表已改变', { cause: error });
     }
     const output = join(base, 'joined-' + key + '.mkv'),
       artifact = new OwnedMediaArtifact(
@@ -350,7 +352,7 @@ export class NativeMediaMux {
         if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
         await localFile(path);
         if ((await readFile(path, 'utf8')) !== body)
-          throw new Error('章节恢复文件已改变，请核验后继续');
+          throw new Error('章节恢复文件已改变，请核验后继续', { cause: error });
       }
       chapterIndex = tracks.length + subtitleInputs.length;
       args.push('-protocol_whitelist', 'file,pipe', '-f', 'ffmetadata', '-i', path);
@@ -405,7 +407,8 @@ export class NativeMediaMux {
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
         await localFile(path);
-        if ((await readFile(path, 'utf8')) !== body) throw new Error('片段拼接恢复文件已改变');
+        if ((await readFile(path, 'utf8')) !== body)
+          throw new Error('片段拼接恢复文件已改变', { cause: error });
       }
       args.push('-filter_complex_script', path);
       if (!audio) args.push('-map', '[edited_v]');

@@ -62,7 +62,9 @@ export function ZhiyunImporter({
       let url: URL | null = null;
       try {
         url = new URL(keyword);
-      } catch {}
+      } catch {
+        // Not a URL; the text is treated as a search keyword.
+      }
       if (
         url &&
         /(^|\.)cmc\.zju\.edu\.cn$/.test(url.hostname) &&

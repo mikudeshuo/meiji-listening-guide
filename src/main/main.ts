@@ -157,7 +157,9 @@ async function startApplication() {
           let value = cookie.value;
           try {
             value = decodeURIComponent(value);
-          } catch {}
+          } catch {
+            // The value is not percent-encoded; it is used as it is.
+          }
           const token = /{i:\d+;s:\d+:"_token";i:\d+;s:\d+:"(.+?)";}/.exec(value)?.[1];
           if (token) headers.set('Authorization', 'Bearer ' + token);
         }
@@ -243,7 +245,9 @@ async function startApplication() {
       let key = '';
       try {
         key = settings.searchKey();
-      } catch {}
+      } catch {
+        // No search key is configured; answers are looked up without one.
+      }
       return searchAnswers(query, key, net.fetch.bind(net) as typeof fetch, signal);
     },
     json: api.json.bind(api),
@@ -379,7 +383,7 @@ async function startApplication() {
           error: true,
         },
       });
-      throw new Error(message);
+      throw new Error(message, { cause: error });
     } finally {
       jobs.delete(key);
     }

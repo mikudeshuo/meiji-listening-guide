@@ -196,7 +196,9 @@ export async function transferMedia(input: {
     input.signal.removeEventListener('abort', abortReader);
     try {
       await reader?.cancel();
-    } catch {}
+    } catch {
+      // The stream has already ended or failed; there is nothing left to cancel.
+    }
     await handle?.close();
     await owner.close();
     // Remove only this invocation's lock, never downloaded media or a recovery checkpoint.

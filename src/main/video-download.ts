@@ -86,7 +86,9 @@ export async function downloadVideoMedia(
     if ((await stat(destination)).size !== bytes) throw new Error('视频保存校验失败');
   } catch (error) {
     if (stalled && !signal.aborted)
-      throw new Error('视频下载连续 60 秒没有收到数据，已停止并保留临时文件，请重试');
+      throw new Error('视频下载连续 60 秒没有收到数据，已停止并保留临时文件，请重试', {
+        cause: error,
+      });
     throw error;
   } finally {
     clearTimeout(timer);

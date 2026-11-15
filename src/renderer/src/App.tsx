@@ -381,7 +381,10 @@ export default function App() {
                 lectures={detail?.lectures || []}
                 value={lectureId}
                 busy={busy}
-                select={setLectureId}
+                select={(id) => {
+                  setError('');
+                  setLectureId(id);
+                }}
                 create={() => {
                   setSourceDraft('');
                   setModal('lecture');

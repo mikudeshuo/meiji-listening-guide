@@ -125,7 +125,9 @@ export class LegacyDownloads {
                 try {
                   const info = await lstat(join(path, child.name, 'state.json'));
                   if (info.isFile())
-                    throw new Error('旧下载记录属于另一资料路径，需确认迁移位置；原文件保留');
+                    throw new Error('旧下载记录属于另一资料路径，需确认迁移位置；原文件保留', {
+                      cause: error,
+                    });
                 } catch (missing) {
                   if ((missing as NodeJS.ErrnoException).code !== 'ENOENT') throw missing;
                 }

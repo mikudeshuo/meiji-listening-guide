@@ -105,6 +105,7 @@ export async function readVideoSeries(input: string, signal: AbortSignal): Promi
     signal.throwIfAborted();
     throw new Error(
       '无法读取课程列表，请检查网络或稍后重试。' + (e instanceof Error ? e.message : ''),
+      { cause: e },
     );
   } finally {
     signal.removeEventListener('abort', abort);

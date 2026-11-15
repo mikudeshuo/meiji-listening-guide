@@ -1,4 +1,4 @@
-import ReactMarkdown from 'react-markdown';
+import { Markdown } from './UiParts';
 import type { VideoNoteMode, VideoNoteResult } from '../../shared/video-notes';
 import { invoke } from './ipc';
 import { VideoMindmap } from './VideoMindmap';
@@ -106,7 +106,7 @@ export function VideoNotesPanel({
             {summaryMode === 'mindmap' ? (
               <VideoMindmap title={subtitle?.title || '课程笔记'} points={summary.points} />
             ) : (
-              <ReactMarkdown>{summary.markdown}</ReactMarkdown>
+              <Markdown text={summary.markdown} />
             )}
           </div>
           <div className="row">

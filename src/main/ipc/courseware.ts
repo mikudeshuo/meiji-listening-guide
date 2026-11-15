@@ -464,7 +464,8 @@ export function createCoursewareHandler(
             if (!(await stat(meta.video)).isFile()) throw new Error('视频文件无效');
           } catch (error) {
             if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-            if (!meta.url) throw new Error('本地视频副本尚未准备完成，请重新选择原视频');
+            if (!meta.url)
+              throw new Error('本地视频副本尚未准备完成，请重新选择原视频', { cause: error });
             videoProgress('视频尚未完整下载，正在重新下载本分集');
             await snapanyDownload(window, meta.url, meta.video, videoProgress, signal);
           }

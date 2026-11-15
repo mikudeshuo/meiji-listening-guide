@@ -36,7 +36,9 @@ async function requestError(response: Response, nativeFile: boolean, hasFile: bo
         hint = '服务端拒绝了课件文件输入，请核对该模型与接口允许的文件格式及大小';
       else if (/model|模型/i.test(detail))
         hint = '服务端拒绝了当前模型，请核对模型名与接口是否匹配';
-    } catch {}
+    } catch {
+      // The error body is not JSON or carries no detail; the generic message below is used.
+    }
   }
   return new Error(
     `API 请求失败（HTTP ${response.status}），${hint || '请检查地址、接口格式、模型、密钥或配额'}${nativeFile ? '；PPT 原文件上传需要服务商支持 Responses 文件输入' : hasFile ? '；此任务需要服务商与模型支持 PDF 文件输入' : ''}`,

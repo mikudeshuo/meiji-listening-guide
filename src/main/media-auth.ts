@@ -120,7 +120,7 @@ export class NativeMediaAuth {
         .parse(JSON.parse(windowsProtect(await readFile(path), true).toString('utf8')));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {} as Record<string, Profile>;
-      throw new Error('登录档案不能在当前系统用户下读取，请重新导入');
+      throw new Error('登录档案不能在当前系统用户下读取，请重新导入', { cause: error });
     }
   }
   private public(row: Profile) {

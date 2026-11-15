@@ -175,7 +175,7 @@ export class VisualTasks {
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
         if ((await readFile(output, 'utf8')) !== text)
-          throw new Error('已有识别成果被修改，保留当前文件');
+          throw new Error('已有识别成果被修改，保留当前文件', { cause: error });
       }
       if ((await readFile(output, 'utf8')) !== text) throw new Error('画面成果保存核验失败');
       task.output = output;

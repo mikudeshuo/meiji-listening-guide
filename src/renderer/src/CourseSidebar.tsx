@@ -95,6 +95,7 @@ export function CourseSidebar({
           if (!ok) throw new Error('会话未删除，请查看错误提示');
         }}
         selectSession={(cid, sid) => {
+          setError('');
           selectedSessions.current[cid] = sid;
           setCourseId(cid);
           setSessionId(sid);
@@ -122,7 +123,10 @@ export function CourseSidebar({
             })
             .catch((e) => setError(String(e)))
         }
-        select={setCourseId}
+        select={(id) => {
+          setError('');
+          setCourseId(id);
+        }}
         remove={async (id) => {
           const ok = await task(async () => {
             await invoke('course:delete', { id, confirmed: true });

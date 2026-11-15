@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import { Markdown } from './UiParts';
 import type { PracticeSet, PracticeQuestion } from '../../shared/types';
 import { questionOptions } from '../../shared/practice';
 import { StudyIcon } from './StudyIcon';
@@ -220,10 +219,12 @@ function Question({
               {q.answer}
             </p>
           )}
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {q.explanation ||
-              '这道题尚未保存详解。需要时请点击上方“补全已有答案与详解”，完成后再查看。'}
-          </ReactMarkdown>
+          <Markdown
+            text={
+              q.explanation ||
+              '这道题尚未保存详解。需要时请点击上方“补全已有答案与详解”，完成后再查看。'
+            }
+          />
           <small>{q.searchStatus} · 详解由 AI 辅助整理</small>
           {q.answerSourceUrl && (
             <a

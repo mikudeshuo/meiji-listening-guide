@@ -168,7 +168,9 @@ export class CodexClient {
       createInterface({ input: this.child.stdout }).on('line', (line) => {
         try {
           void this.receive(JSON.parse(line)).catch(() => this.failed('Codex 消息处理失败'));
-        } catch {}
+        } catch {
+          // Not a JSON message: the CLI may print plain log lines on stdout, which are skipped.
+        }
       });
       await this.rpc('initialize', {
         clientInfo: {

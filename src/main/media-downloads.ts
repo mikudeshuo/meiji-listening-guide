@@ -131,6 +131,7 @@ export class NativeDownloads {
           }),
         ]);
       } catch {
+        // The worker did not confirm shutdown in time or had already exited; it is stopped below and its recovery records stay on disk.
       } finally {
         clearTimeout(timer);
       }

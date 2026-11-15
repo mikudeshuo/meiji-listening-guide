@@ -143,7 +143,7 @@ export function Study({
     } catch (error) {
       if (!String(error).includes('扫描图片')) throw error;
       if (last < first || last - first > 99 || last > book.pages)
-        throw new Error('请选择不超过 100 页的章节范围');
+        throw new Error('请选择不超过 100 页的章节范围', { cause: error });
       setNotice('正在识别扫描教材；请逐条核对文字和位置后保存');
       const data = await invoke('textbook:bytes', { id: book.id }),
         task = getDocument({
