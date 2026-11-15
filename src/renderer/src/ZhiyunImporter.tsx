@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { ZhiyunCourse, ZhiyunLesson } from '../../shared/types';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 export function ZhiyunImporter({
   visible,
   close,
@@ -40,7 +41,7 @@ export function ZhiyunImporter({
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }

@@ -3,6 +3,7 @@ import { defaultIdentity, type Identity } from '../../shared/identity';
 import buddy from './assets/mei-avatar.png';
 import lian from './assets/lian-avatar.jpg';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 export const IdentityContext = createContext<Identity>(defaultIdentity);
 export function IdentityAvatar({ role }: { role: 'user' | 'assistant' }) {
   const identity = useContext(IdentityContext),
@@ -40,7 +41,7 @@ export function IdentityEditor({
       const data = await invoke<string | null>('identity:avatar');
       if (data) update(selected === 'user' ? { userAvatar: data } : { assistantAvatar: data });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     }
   }
   return (
@@ -71,7 +72,7 @@ export function IdentityEditor({
             setError('');
             void save(value)
               .then(() => setSaved(true))
-              .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+              .catch((e) => setError(errorMessage(e)))
               .finally(() => setBusy(false));
           }}
         >

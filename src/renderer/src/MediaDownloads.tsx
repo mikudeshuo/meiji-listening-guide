@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { MediaCatalog, MediaJob } from '../../shared/media';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Options = Record<string, string | number | boolean | null>;
 type LoginProfile = { id: string; name: string; site: string; count: number };
 const labels: Record<string, string> = {
@@ -110,7 +111,7 @@ export function MediaDownloads({ visible }: { visible: boolean }) {
       await fn();
       await refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }
@@ -130,7 +131,7 @@ export function MediaDownloads({ visible }: { visible: boolean }) {
         await invoke('media:create', { token: item.token, options });
         count++;
       } catch (reason) {
-        failed.push(`${link}：${reason instanceof Error ? reason.message : String(reason)}`);
+        failed.push(`${link}：${errorMessage(reason)}`);
       }
     }
     setNotice(`已加入 ${count} 个所选下载任务`);

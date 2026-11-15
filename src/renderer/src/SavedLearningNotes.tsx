@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { invoke, operationId, toolsRequest } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Receipt = { note_id: string; title: string; body_sha256: string; created_at: string };
 type Note = { receipt: Receipt; markdown: string; lifecycle: { revision: number; state: string } };
 type Preview = {
@@ -40,7 +41,7 @@ export function SavedLearningNotes() {
     try {
       await fn();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

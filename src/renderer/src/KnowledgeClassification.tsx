@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { KnowledgeEntry } from '../../shared/knowledge';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Selection = {
   type: string;
   topic: string;
@@ -45,7 +46,7 @@ export function KnowledgeClassification({
     try {
       await fn();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

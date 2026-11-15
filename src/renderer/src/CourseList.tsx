@@ -9,6 +9,7 @@ import {
   courseSubject,
   sortCoursesForNavigation,
 } from '../../shared/course-groups';
+import { errorMessage } from '../../shared/errors';
 export function CourseList({
   courses,
   selected,
@@ -158,7 +159,7 @@ export function CourseList({
                   setDeleting(true);
                   void removeSession(pendingSession.course_id, pendingSession.id)
                     .then(() => setPendingSession(null))
-                    .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+                    .catch((e) => setError(errorMessage(e)))
                     .finally(() => setDeleting(false));
                 }}
               >
@@ -189,7 +190,7 @@ export function CourseList({
                   setDeleting(true);
                   void remove(pending.id)
                     .then(() => setPending(null))
-                    .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+                    .catch((e) => setError(errorMessage(e)))
                     .finally(() => setDeleting(false));
                 }}
               >

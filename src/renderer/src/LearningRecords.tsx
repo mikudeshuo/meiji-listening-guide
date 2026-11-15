@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { MemorySuggestions } from './MemorySuggestions';
 import { invoke, operationId, toolsRequest } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Session = { conversation_id: string; title: string; revision: number; pinned: boolean };
 type Task = {
   task_id: string;
@@ -57,7 +58,7 @@ export function LearningRecords() {
     try {
       await fn();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

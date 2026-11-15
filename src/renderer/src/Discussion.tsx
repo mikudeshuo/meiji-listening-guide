@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Item = {
   id: string;
   text: string;
@@ -55,7 +56,7 @@ export function Discussion() {
     try {
       await fn();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

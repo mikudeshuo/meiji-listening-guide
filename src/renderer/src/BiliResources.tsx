@@ -6,6 +6,7 @@ import { BiliBrowse } from './BiliBrowse';
 import type { VideoSeries } from '../../shared/video-ppt';
 import type { SubtitleSyncTask } from '../../shared/subtitle-sync';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Folder = { id: number; title: string; media_count: number };
 type Video = {
   id: number;
@@ -104,7 +105,7 @@ export function BiliResources({
     try {
       await fn();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       working.current = false;
       setBusy(false);

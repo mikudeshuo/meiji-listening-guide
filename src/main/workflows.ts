@@ -18,6 +18,7 @@ import type { Api } from './api';
 import { chunks, parseCourseware } from './documents';
 import { readTranscript } from './transcript';
 import { prepareAnswer, type AnswerDependencies } from './practice-answer';
+import { errorMessage } from '../shared/errors';
 export class Workflows {
   constructor(
     private store: Store,
@@ -186,7 +187,7 @@ export class Workflows {
             break;
           } catch (error) {
             if (signal?.aborted) throw error;
-            const message = error instanceof Error ? error.message : String(error);
+            const message = errorMessage(error);
             if (
               attempt === 2 ||
               !/ERR_CONNECTION_(CLOSED|RESET|ABORTED)|ERR_(NETWORK_CHANGED|TIMED_OUT|EMPTY_RESPONSE)|fetch failed|network error|TimeoutError|aborted due to timeout|HTTP (429|5\d\d)/i.test(

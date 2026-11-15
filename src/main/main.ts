@@ -51,6 +51,7 @@ import { ZhiyunBrowser } from './zhiyun-browser';
 import { verifyGeneratedPdf } from './pdf-ppt-cleanup';
 import { resourcesDirectory } from './paths';
 import { sha256, sha256Json } from './digest';
+import { errorMessage } from '../shared/errors';
 const mainDir = fileURLToPath(new URL('.', import.meta.url));
 let store: Store | undefined, mainWindow: BrowserWindow | undefined;
 let shutdownBackends: (() => Promise<void>) | undefined,
@@ -359,9 +360,7 @@ async function startApplication() {
       await transcript.cleanup();
       await videoPpt.discardCompleted(task.id);
     } catch (error) {
-      cleanupWarning =
-        '字幕已保存，但临时视频清理失败：' +
-        (error instanceof Error ? error.message : String(error));
+      cleanupWarning = '字幕已保存，但临时视频清理失败：' + errorMessage(error);
     }
     videoProgress(
       cleanupWarning ? '字幕已保存，临时视频需要手动检查' : '字幕已保存并检查，临时视频已清理',

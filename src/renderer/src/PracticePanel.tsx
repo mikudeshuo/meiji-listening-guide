@@ -6,6 +6,7 @@ import { questionOptions } from '../../shared/practice';
 import { StudyIcon } from './StudyIcon';
 import { IdentityAvatar } from './Identity';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Group = 'past' | 'extended' | 'generated';
 type Actions = {
   disabled: boolean;
@@ -61,7 +62,7 @@ function Question({
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setPending(false);
     }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { imRequest } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Scope = {
   connection_id: string;
   revision: string;
@@ -113,7 +114,7 @@ export function ImAutomation({
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }

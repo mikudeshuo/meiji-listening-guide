@@ -10,6 +10,7 @@ import {
 } from '../../shared/study';
 import type { Course, Detail } from '../../shared/types';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 GlobalWorkerOptions.workerSrc = workerUrl;
 type Book = { id: string; path: string; pages: number };
 export function Study({
@@ -53,7 +54,7 @@ export function Study({
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }

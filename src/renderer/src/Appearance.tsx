@@ -8,6 +8,7 @@ import {
 import type { Course } from '../../shared/types';
 import { ChatMessage } from './ChatMessage';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 const colors = {
   default: 'var(--blue)',
   lavender: '#9279c7',
@@ -111,7 +112,7 @@ export function AppearanceEditor({
           for (const [id, value] of batch)
             if (!pending.current.has(id)) pending.current.set(id, value);
           if (mounted.current) {
-            setError(e instanceof Error ? e.message : String(e));
+            setError(errorMessage(e));
             setStatus('保存失败，可点击保存重试');
           }
           throw e;
@@ -161,7 +162,7 @@ export function AppearanceEditor({
       await flush();
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }

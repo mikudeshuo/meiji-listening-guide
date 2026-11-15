@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { toolsRequest } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Candidate = {
   candidate_id: string;
   kind: string;
@@ -35,7 +36,7 @@ export function MemorySuggestions({ saved }: { saved: () => Promise<void> }) {
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       setBusy(false);
     }

@@ -7,6 +7,7 @@ import type {
   KnowledgeSearch,
 } from '../../shared/knowledge';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Answer = {
   answer: {
     paragraphs: { text: string; citations: { id: string; quote: string }[] }[];
@@ -96,7 +97,7 @@ export function KnowledgeBase({ visible, close }: { visible: boolean; close: () 
     try {
       await fn();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       working.current = false;
       setBusy(false);

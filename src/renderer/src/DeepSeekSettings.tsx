@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Profile, Settings } from '../../shared/types';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 const available = ['deepseek-flash', 'deepseek-v4-pro'];
 export function DeepSeekSettings({
   value,
@@ -52,7 +53,7 @@ export function DeepSeekSettings({
     try {
       await fn();
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : String(e));
+      setNotice(errorMessage(e));
     } finally {
       setPending(false);
     }

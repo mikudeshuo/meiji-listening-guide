@@ -6,6 +6,7 @@ import {
   type PptExtractPage,
 } from '../../shared/ppt-extract';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 export function PptExtract({
   visible,
   close,
@@ -51,7 +52,7 @@ export function PptExtract({
     try {
       await invoke(reveal ? 'library:reveal' : 'library:open-file', { path });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     }
   }
   const working = useRef(false);
@@ -70,7 +71,7 @@ export function PptExtract({
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       working.current = false;
       setBusy(false);

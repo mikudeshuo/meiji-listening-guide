@@ -15,6 +15,7 @@ import {
 import type { SubtitleSyncTask } from '../../shared/subtitle-sync';
 import type { LibraryFile } from '../../shared/types';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type BiliSubtitle = {
   title: string;
   page: number;
@@ -124,15 +125,12 @@ export function VideoPpt({
     try {
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(errorMessage(e));
     } finally {
       working.current = false;
       setBusy(false);
       void refresh().catch((e) =>
-        setError(
-          (current) =>
-            current || '任务列表刷新失败：' + (e instanceof Error ? e.message : String(e)),
-        ),
+        setError((current) => current || '任务列表刷新失败：' + errorMessage(e)),
       );
     }
   }

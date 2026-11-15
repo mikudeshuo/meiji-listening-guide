@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Task = {
   id: string;
   source: string;
@@ -45,7 +46,7 @@ export function VisualAnalysis({ visible, close }: { visible: boolean; close: ()
       await fn();
       await refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
       void refresh();
     } finally {
       setBusy(false);

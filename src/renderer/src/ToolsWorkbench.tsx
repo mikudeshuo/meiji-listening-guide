@@ -4,6 +4,7 @@ import { LearningRecords } from './LearningRecords';
 import { SavedLearningNotes } from './SavedLearningNotes';
 import { Markdown } from './UiParts';
 import { invoke, operationId, toolsRequest } from './ipc';
+import { errorMessage } from '../../shared/errors';
 function Result({ text }: { text: string }) {
   return (
     <div className="learning-summary">
@@ -129,7 +130,7 @@ export function ToolsWorkbench({ visible, close }: { visible: boolean; close: ()
       await fn();
       await refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Video = { bvid: string; title: string; author: string; duration: string; url: string };
 type Listing = { videos: Video[]; page: number; hasMore: boolean };
 export function BiliBrowse({
@@ -26,7 +27,7 @@ export function BiliBrowse({
       );
       setSubmitted(kind === 'search' ? word : '');
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

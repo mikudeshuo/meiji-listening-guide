@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import type { MediaBackend } from './media';
 import { hexId, sha256, sha256File } from './digest';
+import { errorMessage } from '../shared/errors';
 export type VisualFrame = {
   path: string;
   time: number;
@@ -100,7 +101,7 @@ export class VisualTasks {
       return task;
     } catch (reason) {
       task.preparation.status = '等待继续';
-      task.preparation.error = reason instanceof Error ? reason.message : String(reason);
+      task.preparation.error = errorMessage(reason);
       await this.save(task);
       throw reason;
     } finally {
@@ -152,7 +153,7 @@ export class VisualTasks {
       } catch (reason) {
         signal.throwIfAborted();
         frame.status = '失败';
-        frame.error = reason instanceof Error ? reason.message : String(reason);
+        frame.error = errorMessage(reason);
       }
       await this.save(task);
     }

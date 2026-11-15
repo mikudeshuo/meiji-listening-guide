@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ImAutomation } from './ImAutomation';
 import { imRequest, invoke, operationId } from './ipc';
+import { errorMessage } from '../../shared/errors';
 type Connection = {
   id: string;
   name: string;
@@ -95,7 +96,7 @@ export function Communications({ visible, close }: { visible: boolean; close: ()
       await fn();
       await refresh();
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(errorMessage(reason));
     } finally {
       setBusy(false);
     }

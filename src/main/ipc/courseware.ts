@@ -22,6 +22,7 @@ import { deleteConvertedPpt, verifyGeneratedPdf } from '../pdf-ppt-cleanup';
 import type { ApplicationContext } from '../main';
 import type { IpcHandler } from './handler';
 import { sha256 } from '../digest';
+import { errorMessage } from '../../shared/errors';
 export function createCoursewareHandler(
   context: Pick<
     ApplicationContext,
@@ -579,7 +580,7 @@ export function createCoursewareHandler(
                 if (result.cleanupWarning) item.error = result.cleanupWarning;
               } catch (e) {
                 item.status = '失败';
-                item.error = e instanceof Error ? e.message : String(e);
+                item.error = errorMessage(e);
                 notify();
                 signal.throwIfAborted();
               }

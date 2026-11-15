@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { CodexAccount, CodexModel, Settings } from '../../shared/types';
 import { invoke } from './ipc';
+import { errorMessage } from '../../shared/errors';
 export function CodexSettings({
   value,
   update,
@@ -54,7 +55,7 @@ export function CodexSettings({
     try {
       await fn();
     } catch (e) {
-      setNotice(e instanceof Error ? e.message : String(e));
+      setNotice(errorMessage(e));
     } finally {
       setPending(false);
     }

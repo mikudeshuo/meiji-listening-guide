@@ -60,6 +60,7 @@ import {
   Materials,
   SettingsPanel,
 } from './CoursePanels';
+import { errorMessage } from '../../shared/errors';
 export default function App() {
   const [sessionDraft, setSessionDraft] = useState<{
     detail: Detail;
@@ -154,7 +155,7 @@ export default function App() {
       ]);
       return true;
     } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
+      const message = errorMessage(e);
       setError(message);
       setActivities((a) => [
         ...a,
