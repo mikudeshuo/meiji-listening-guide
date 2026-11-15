@@ -8,36 +8,17 @@ import type {
 } from '../../shared/knowledge';
 import { invoke } from './ipc';
 import { errorMessage } from '../../shared/errors';
-type Answer = {
-  answer: {
-    paragraphs: { text: string; citations: { id: string; quote: string }[] }[];
-    limitation: string;
-  };
-  sources: KnowledgeHit[];
-};
-type VectorState = {
-  model: string;
-  bundled: boolean;
-  active: boolean;
-  selection_error: string | null;
-  index: 'ready' | 'stale' | 'not_built';
-  vector_count: number;
-};
-export function KnowledgeIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 5c-3-2-7-2-9-1v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-2-1-6-1-9 1v15M6 8h3m-3 4h3m6-4h3m-3 4h3" />
-    </svg>
-  );
-}
+import { KnowledgeImportCard } from './KnowledgeImportCard';
+import { KnowledgeVectorCard } from './KnowledgeVectorCard';
+import { KnowledgeCategoryCard } from './KnowledgeCategoryCard';
+import { KnowledgeSearchForm } from './KnowledgeSearchForm';
+import { KnowledgeSearchResults } from './KnowledgeSearchResults';
+import { KnowledgeAnswer } from './KnowledgeAnswer';
+import { KnowledgeFilterCard } from './KnowledgeFilterCard';
+import { KnowledgeEntryList } from './KnowledgeEntryList';
+import { KnowledgeMoveDialog } from './KnowledgeMoveDialog';
+import type { Answer, VectorState } from './knowledge-types';
+import { KnowledgeIcon } from './KnowledgeIcon';
 export function KnowledgeBase({ visible, close }: { visible: boolean; close: () => void }) {
   const [data, setData] = useState<KnowledgeList>({
     entries: [],
@@ -191,181 +172,47 @@ export function KnowledgeBase({ visible, close }: { visible: boolean; close: () 
             {vector?.index === 'ready' ? '关键词 + 语义检索' : '本地关键词检索'}
           </span>
         </header>
-        <section className="knowledge-card">
-          <div className="row">
-            <label>
-              导入分类
-              <input
-                aria-label="导入分类"
-                placeholder="例如：牙体牙髓病学"
-                value={importCategory}
-                maxLength={100}
-                onChange={(event) => setImportCategory(event.target.value)}
-              />
-            </label>
-            <button
-              className="primary"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  const results = await invoke<
-                    { name: string; ok: boolean; error?: string; result?: { unchanged: boolean } }[]
-                  >('knowledge:import', { category: importCategory.trim() });
-                  if (results.length) {
-                    await refresh();
-                    setSearch(null);
-                    setAnswer(null);
-                    setNotice(
-                      results
-                        .map((item) =>
-                          item.ok
-                            ? item.name + (item.result?.unchanged ? '：已有相同版本' : '：已导入')
-                            : item.name + '：' + item.error,
-                        )
-                        .join('\n'),
-                    );
-                  }
-                })
-              }
-            >
-              导入资料
-            </button>
-            <button
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  await invoke('knowledge:rebuild');
-                  await refresh();
-                  setNotice('关键词索引已重建');
-                })
-              }
-            >
-              重建索引
-            </button>
-          </div>
-          <p className="hint">
-            支持有文字的 PDF、Word、TXT、Markdown 和
-            SRT。原文件保留，知识库单独保存文字版本；更新资料请再次导入。图片型 PDF 需先识别文字。
-          </p>
-        </section>
-        <section className="knowledge-card">
-          <header>
-            <div>
-              <h3>本地语义检索</h3>
-              <p className="hint">
-                {!vector
-                  ? '正在检查本地模型…'
-                  : vector.index === 'ready'
-                    ? `模型已启用，已建立 ${vector.vector_count} 个向量片段。`
-                    : vector.active
-                      ? '模型已启用；导入或更新资料后，请建立语义索引。'
-                      : vector.bundled
-                        ? '已附带中文模型，启用后可以建立语义索引。'
-                        : '本地模型文件不可用，仍可使用关键词检索。'}
-              </p>
-            </div>
-            <div className="row">
-              {!vector?.active && (
-                <button
-                  disabled={busy || !vector?.bundled}
-                  onClick={() =>
-                    void run(async () => {
-                      setVector(await invoke<VectorState>('knowledge:vector-enable'));
-                      setNotice('中文模型已启用，请建立语义索引');
-                    })
-                  }
-                >
-                  启用中文模型
-                </button>
-              )}
-              <button
-                disabled={busy || !vector?.active}
-                onClick={() =>
-                  void run(async () => {
-                    const result = await invoke<{ status: VectorState }>(
-                      'knowledge:vector-rebuild',
-                    );
-                    setVector(result.status);
-                    setSearch(null);
-                    setAnswer(null);
-                    setNotice('语义索引已建立');
-                  })
-                }
-              >
-                建立语义索引
-              </button>
-            </div>
-          </header>
-          <p className="hint">模型在本机运行。建索引可能需要数分钟；未建好时检索继续使用关键词。</p>
-        </section>
+        <KnowledgeImportCard
+          importCategory={importCategory}
+          setImportCategory={setImportCategory}
+          busy={busy}
+          run={run}
+          refresh={refresh}
+          setSearch={setSearch}
+          setAnswer={setAnswer}
+          setNotice={setNotice}
+        />
+        <KnowledgeVectorCard
+          vector={vector}
+          busy={busy}
+          run={run}
+          setVector={setVector}
+          setNotice={setNotice}
+          setSearch={setSearch}
+          setAnswer={setAnswer}
+        />
         {category && (
-          <section className="knowledge-card">
-            <h3>管理分类 · {category}</h3>
-            <div className="row">
-              <label>
-                分类新名称
-                <input
-                  aria-label="分类新名称"
-                  list="knowledge-categories"
-                  value={categoryTarget}
-                  maxLength={100}
-                  placeholder="输入新名称或选择现有分类"
-                  onChange={(event) => setCategoryTarget(event.target.value)}
-                />
-              </label>
-              <button
-                disabled={
-                  busy ||
-                  !categoryTarget.trim() ||
-                  categoryTarget.trim() === category ||
-                  !entries.length
-                }
-                onClick={() => void run(() => organize(entries, categoryTarget, true))}
-              >
-                {categories.includes(categoryTarget.trim()) ? '合并分类' : '重命名分类'}
-              </button>
-            </div>
-            <p className="hint">
-              将本分类的 {entries.length}{' '}
-              份资料移到新名称；选择已有分类会合并资料，移空的分类自动消失。
-            </p>
-          </section>
-        )}
-        <form
-          className="knowledge-search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void run(async () => {
-              setAnswer(null);
-              setReading(null);
-              setSearch(await invoke('knowledge:search', { query, ids }));
-            });
-          }}
-        >
-          <input
-            aria-label="知识库检索词"
-            placeholder="输入知识点，查找相关原文…"
-            value={query}
-            maxLength={2000}
-            onChange={(event) => setQuery(event.target.value)}
+          <KnowledgeCategoryCard
+            category={category}
+            categoryTarget={categoryTarget}
+            setCategoryTarget={setCategoryTarget}
+            busy={busy}
+            entries={entries}
+            run={run}
+            organize={organize}
+            categories={categories}
           />
-          <button disabled={busy || !query.trim()} className="primary">
-            检索原文
-          </button>
-          <button
-            type="button"
-            disabled={busy || !query.trim()}
-            onClick={() =>
-              void run(async () => {
-                setSearch(null);
-                setReading(null);
-                setAnswer(await invoke('knowledge:ask', { query, ids }));
-              })
-            }
-          >
-            根据资料回答
-          </button>
-        </form>
+        )}
+        <KnowledgeSearchForm
+          run={run}
+          setAnswer={setAnswer}
+          setReading={setReading}
+          setSearch={setSearch}
+          query={query}
+          ids={ids}
+          setQuery={setQuery}
+          busy={busy}
+        />
         <p className="hint">
           检索在本机进行；点击“根据资料回答”会将问题和检索片段交给当前连接的模型。回答附可查看的原文引用。
         </p>
@@ -386,49 +233,9 @@ export function KnowledgeBase({ visible, close }: { visible: boolean; close: () 
           </div>
         )}
         {search && (
-          <section>
-            <h3>相关原文 · {search.hits.length}</h3>
-            <p className="hint">
-              {search.trace.vector?.note || '本次使用关键词检索。'}
-              {!search.hits.length && '未命中不代表资料没有相关内容，可以换关键词。'}
-            </p>
-            {search.hits.map((hit) => (
-              <article className="knowledge-card" key={hit.evidence_id}>
-                <header>
-                  <strong>{hit.title}</strong>
-                  <button disabled={busy} onClick={() => void readCitation(hit.evidence_id)}>
-                    核验引用来源
-                  </button>
-                </header>
-                <p className="knowledge-text">{hit.content}</p>
-                <small>原文片段 {hit.chunkIndex + 1}</small>
-              </article>
-            ))}
-          </section>
+          <KnowledgeSearchResults search={search} busy={busy} readCitation={readCitation} />
         )}
-        {answer && (
-          <section className="knowledge-card">
-            <h3>资料回答</h3>
-            {answer.answer.paragraphs.map((paragraph, index) => (
-              <div key={index}>
-                <p>{paragraph.text}</p>
-                {paragraph.citations.map((citation, i) => (
-                  <button
-                    key={i}
-                    className="knowledge-citation"
-                    disabled={busy}
-                    onClick={() => void readCitation(citation.id)}
-                  >
-                    {answer.sources.find((source) => source.evidence_id === citation.id)?.title ||
-                      '原文来源'}{' '}
-                    · 查看引用
-                  </button>
-                ))}
-              </div>
-            ))}
-            {answer.answer.limitation && <p className="hint">{answer.answer.limitation}</p>}
-          </section>
-        )}
+        {answer && <KnowledgeAnswer answer={answer} busy={busy} readCitation={readCitation} />}
         {reading && (
           <section className="knowledge-card knowledge-reading">
             <header>
@@ -438,160 +245,35 @@ export function KnowledgeBase({ visible, close }: { visible: boolean; close: () 
             <p className="knowledge-text">{reading.text}</p>
           </section>
         )}
-        <section className="knowledge-card">
-          <h3>按内容筛选</h3>
-          <div className="media-options">
-            {[
-              ['type', '类型'],
-              ['topic', '主题'],
-              ['difficulty', '难度'],
-              ['duration', '时长'],
-              ['language', '语言'],
-            ].map(([key, label]) => (
-              <label key={key}>
-                {label}
-                <select
-                  aria-label={`筛选${label}`}
-                  value={facets[key] || ''}
-                  onChange={(e) => {
-                    setFacets({ ...facets, [key]: e.target.value });
-                    setSearch(null);
-                    setAnswer(null);
-                  }}
-                >
-                  <option value="">全部</option>
-                  {Array.from(
-                    new Set(
-                      data.entries
-                        .map(
-                          (entry) =>
-                            entry.classification?.[
-                              key as keyof NonNullable<KnowledgeEntry['classification']>
-                            ],
-                        )
-                        .filter((value): value is string => typeof value === 'string' && !!value),
-                    ),
-                  )
-                    .sort()
-                    .map((value) => (
-                      <option key={value}>{value}</option>
-                    ))}
-                </select>
-              </label>
-            ))}
-          </div>
-          <button
-            onClick={() => {
-              setFacets({});
-              setSearch(null);
-              setAnswer(null);
-            }}
-          >
-            清除筛选
-          </button>
-        </section>
+        <KnowledgeFilterCard
+          facets={facets}
+          setFacets={setFacets}
+          setSearch={setSearch}
+          setAnswer={setAnswer}
+          data={data}
+        />
         <KnowledgeClassification entries={entries} refresh={refresh} />
-        <section>
-          <h3>已导入资料 · {entries.length}</h3>
-          {!entries.length && (
-            <div className="knowledge-empty">
-              <KnowledgeIcon />
-              <p>导入课程资料后，就能在这里跨资料查找知识点。</p>
-            </div>
-          )}
-          {entries.map((entry) => (
-            <article className="knowledge-entry" key={entry.bvid}>
-              <KnowledgeIcon />
-              <div>
-                <strong>{entry.title}</strong>
-                <small>
-                  {entry.folder || '未分类'} · {entry.textLength} 字
-                  {entry.classification && (
-                    <span>
-                      {' '}
-                      · {entry.classification.type} · {entry.classification.topic} ·{' '}
-                      {entry.classification.keywords.join('、')}
-                    </span>
-                  )}
-                  {entry.sourceMethod ? ` · ${entry.sourceMethod}` : ''}
-                </small>
-              </div>
-              <button
-                disabled={busy}
-                onClick={() =>
-                  void run(async () => {
-                    const result = await invoke<{ entry: { title: string }; text: string }>(
-                      'knowledge:read',
-                      { id: entry.bvid },
-                    );
-                    setReading({ title: result.entry.title, text: result.text });
-                  })
-                }
-              >
-                查看原文
-              </button>
-              <button
-                disabled={busy}
-                onClick={() => setMoving({ entry, target: entry.folder || '' })}
-              >
-                移动分类
-              </button>
-              {deleting === entry.bvid ? (
-                <>
-                  <span>仅删除知识库版本</span>
-                  <button
-                    disabled={busy}
-                    onClick={() =>
-                      void run(async () => {
-                        await invoke('knowledge:delete', { id: entry.bvid });
-                        setDeleting('');
-                        setSearch(null);
-                        setAnswer(null);
-                        setReading(null);
-                        await refresh();
-                        setNotice('知识库版本已删除，原文件保留');
-                      })
-                    }
-                  >
-                    确认删除
-                  </button>
-                  <button onClick={() => setDeleting('')}>取消</button>
-                </>
-              ) : (
-                <button disabled={busy} onClick={() => setDeleting(entry.bvid)}>
-                  删除
-                </button>
-              )}
-            </article>
-          ))}
-        </section>
+        <KnowledgeEntryList
+          entries={entries}
+          busy={busy}
+          run={run}
+          setReading={setReading}
+          setMoving={setMoving}
+          deleting={deleting}
+          setDeleting={setDeleting}
+          setSearch={setSearch}
+          setAnswer={setAnswer}
+          refresh={refresh}
+          setNotice={setNotice}
+        />
         {moving && (
-          <section className="knowledge-card" aria-label="移动资料分类">
-            <h3>移动 · {moving.entry.title}</h3>
-            <div className="row">
-              <label>
-                目标分类
-                <input
-                  aria-label="目标分类"
-                  list="knowledge-categories"
-                  maxLength={100}
-                  placeholder="留空移到未分类"
-                  value={moving.target}
-                  onChange={(event) => setMoving({ ...moving, target: event.target.value })}
-                />
-              </label>
-              <button
-                disabled={busy}
-                onClick={() => void run(() => organize([moving.entry], moving.target))}
-              >
-                保存分类
-              </button>
-              <button disabled={busy} onClick={() => setMoving(null)}>
-                取消移动
-              </button>
-            </div>
-            <p className="hint">可以选择已有分类或输入新的名称；留空归入未分类。</p>
-          </section>
+          <KnowledgeMoveDialog
+            moving={moving}
+            setMoving={setMoving}
+            busy={busy}
+            run={run}
+            organize={organize}
+          />
         )}
       </main>
     </section>

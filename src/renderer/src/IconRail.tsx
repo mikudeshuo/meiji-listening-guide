@@ -1,5 +1,5 @@
 import { ResourceIcon } from './BiliResources';
-import { KnowledgeIcon } from './KnowledgeBase';
+import { KnowledgeIcon } from './KnowledgeIcon';
 import { LearningRail } from './LearningNav';
 import { ListeningBuddy } from './ListeningBuddy';
 import { FolderNavIcon } from './ManagementIcons';
