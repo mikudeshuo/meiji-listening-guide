@@ -1,28 +1,29 @@
 import type { LectureDetail } from '../../shared/types';
 import { Notes } from './Notes';
 import { invoke } from './ipc';
+import type { TaskRunner } from './useTaskRunner';
+import type { CourseWorkspace } from './useCourseWorkspace';
 
 export function NotesTab({
-  busy,
   lecture,
-  task,
   generate,
   exportResult,
   jump,
-  lectureId,
-  reloadLecture,
+  tasks,
+  workspace,
 }: {
-  busy: boolean;
   lecture: LectureDetail;
-  task: (fn: () => Promise<unknown>) => Promise<boolean>;
   generate: (
     action: 'subtitles:generate' | 'notes:generate' | 'practice:generate' | 'practice:prepare',
   ) => Promise<void>;
   exportResult: (kind: string, format: string) => undefined;
   jump: (timestamp: string | number) => void;
-  lectureId: string;
-  reloadLecture: (id?: string) => Promise<LectureDetail>;
+  tasks: TaskRunner;
+  workspace: CourseWorkspace;
 }) {
+  const { busy, task } = tasks;
+  const { lectureId, reloadLecture } = workspace;
+
   return (
     <>
       <div className="toolbar">

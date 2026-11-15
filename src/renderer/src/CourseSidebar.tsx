@@ -1,67 +1,53 @@
-import type { Course, ChatSession, Detail, LectureDetail, Settings } from '../../shared/types';
+import type { Detail, Settings } from '../../shared/types';
 import { CourseList } from './CourseList';
 import { invoke } from './ipc';
 import { ListeningBuddy } from './ListeningBuddy';
 import { ThemeIcon } from './ThemeIcon';
 import type { SetAppModal, SetLectureTab } from './app-state';
+import type { CourseWorkspace } from './useCourseWorkspace';
+import type { TaskRunner } from './useTaskRunner';
+import type { ChatStream } from './useChatStream';
 
 export function CourseSidebar({
   setModal,
-  courses,
-  courseId,
-  busy,
-  sessions,
-  sessionId,
-  task,
-  setSessions,
-  selectedSessions,
-  setSessionId,
-  setInput,
-  setChatText,
-  setPendingChat,
-  request,
-  reloadCourse,
-  setCourseId,
-  setLectureId,
   setTab,
   setSessionDraft,
-  lectureId,
-  setError,
-  setCourses,
-  setDetail,
-  setLecture,
   settings,
   setSettings,
+  workspace,
+  tasks,
+  chat,
 }: {
   setModal: SetAppModal;
-  courses: Course[];
-  courseId: string;
-  busy: boolean;
-  sessions: ChatSession[];
-  sessionId: string;
-  task: (fn: () => Promise<unknown>) => Promise<boolean>;
-  setSessions: React.Dispatch<React.SetStateAction<ChatSession[]>>;
-  selectedSessions: React.RefObject<Record<string, string>>;
-  setSessionId: React.Dispatch<React.SetStateAction<string>>;
-  setInput: React.Dispatch<React.SetStateAction<string>>;
-  setChatText: React.Dispatch<React.SetStateAction<string>>;
-  setPendingChat: React.Dispatch<React.SetStateAction<string>>;
-  request: React.RefObject<string>;
-  reloadCourse: (id?: string) => Promise<Detail>;
-  setCourseId: React.Dispatch<React.SetStateAction<string>>;
-  setLectureId: React.Dispatch<React.SetStateAction<string>>;
   setTab: SetLectureTab;
   setSessionDraft: React.Dispatch<
     React.SetStateAction<{ detail: Detail; lectureId: string } | null>
   >;
-  lectureId: string;
-  setError: React.Dispatch<React.SetStateAction<string>>;
-  setCourses: React.Dispatch<React.SetStateAction<Course[]>>;
-  setDetail: React.Dispatch<React.SetStateAction<Detail | null>>;
-  setLecture: React.Dispatch<React.SetStateAction<LectureDetail | null>>;
   settings: Settings | null;
   setSettings: React.Dispatch<React.SetStateAction<Settings | null>>;
+  workspace: CourseWorkspace;
+  tasks: TaskRunner;
+  chat: ChatStream;
 }) {
+  const {
+    courses,
+    courseId,
+    sessions,
+    sessionId,
+    setSessions,
+    selectedSessions,
+    setSessionId,
+    reloadCourse,
+    setCourseId,
+    setLectureId,
+    lectureId,
+    setCourses,
+    setDetail,
+    setLecture,
+  } = workspace;
+  const { busy, task, setError } = tasks;
+  const { setInput, setChatText, setPendingChat, request } = chat;
+
   return (
     <aside className="sidebar">
       <div className="brand">

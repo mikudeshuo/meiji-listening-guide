@@ -1,4 +1,4 @@
-import type { Detail, LectureDetail, Profile } from '../../shared/types';
+import type { LectureDetail, Profile } from '../../shared/types';
 import { DshPlusIcon, DshChevronDownIcon, DshStopIcon, DshSendIcon } from './ChatIcons';
 import { ChatWaitingReply } from './ChatMessage';
 import { invoke } from './ipc';
@@ -6,23 +6,13 @@ import { ModelNavIcon } from './SidebarIcons';
 import { StudyIcon } from './StudyIcon';
 import { basename } from './UiParts';
 import type { SetAppModal, SetLectureTab } from './app-state';
+import type { ChatStream } from './useChatStream';
+import type { CourseWorkspace } from './useCourseWorkspace';
+import type { TaskRunner } from './useTaskRunner';
 
 export function Composer({
-  pendingChat,
-  chatText,
-  sessionId,
-  input,
-  courseId,
-  lectureId,
   setTab,
-  task,
-  request,
-  setChatText,
-  setPendingChat,
-  setInput,
-  reloadCourse,
   sourceDraft,
-  busy,
   setModal,
   setSourceDraft,
   menu,
@@ -32,22 +22,12 @@ export function Composer({
   modal,
   modelBrand,
   activeProfile,
+  chat,
+  workspace,
+  tasks,
 }: {
-  pendingChat: string;
-  chatText: string;
-  sessionId: string;
-  input: string;
-  courseId: string;
-  lectureId: string;
   setTab: SetLectureTab;
-  task: (fn: () => Promise<unknown>) => Promise<boolean>;
-  request: React.RefObject<string>;
-  setChatText: React.Dispatch<React.SetStateAction<string>>;
-  setPendingChat: React.Dispatch<React.SetStateAction<string>>;
-  setInput: React.Dispatch<React.SetStateAction<string>>;
-  reloadCourse: (id?: string) => Promise<Detail>;
   sourceDraft: string;
-  busy: boolean;
   setModal: SetAppModal;
   setSourceDraft: React.Dispatch<React.SetStateAction<string>>;
   menu: boolean;
@@ -59,7 +39,14 @@ export function Composer({
   modal: string | null;
   modelBrand: string;
   activeProfile: Profile | { model: string } | undefined;
+  chat: ChatStream;
+  workspace: CourseWorkspace;
+  tasks: TaskRunner;
 }) {
+  const { pendingChat, chatText, input, request, setChatText, setPendingChat, setInput } = chat;
+  const { sessionId, courseId, lectureId, reloadCourse } = workspace;
+  const { task, busy } = tasks;
+
   return (
     <section className="agent-composer">
       {pendingChat && <ChatWaitingReply streaming={!!chatText} />}

@@ -2,36 +2,37 @@ import { time } from '../../shared/srt';
 import type { LectureDetail } from '../../shared/types';
 import { invoke } from './ipc';
 import { StudyIcon } from './StudyIcon';
+import type { TaskRunner } from './useTaskRunner';
+import type { CourseWorkspace } from './useCourseWorkspace';
 
 export function SubtitlesTab({
-  busy,
   lecture,
-  task,
   generate,
-  lectureId,
-  reloadLecture,
   setSrtEdit,
   srtEdit,
   exportResult,
   search,
   setSearch,
   jump,
+  tasks,
+  workspace,
 }: {
-  busy: boolean;
   lecture: LectureDetail;
-  task: (fn: () => Promise<unknown>) => Promise<boolean>;
   generate: (
     action: 'subtitles:generate' | 'notes:generate' | 'practice:generate' | 'practice:prepare',
   ) => Promise<void>;
-  lectureId: string;
-  reloadLecture: (id?: string) => Promise<LectureDetail>;
   setSrtEdit: React.Dispatch<React.SetStateAction<string | null>>;
   srtEdit: string | null;
   exportResult: (kind: string, format: string) => undefined;
   search: string;
   setSearch: React.Dispatch<React.SetStateAction<string>>;
   jump: (timestamp: string | number) => void;
+  tasks: TaskRunner;
+  workspace: CourseWorkspace;
 }) {
+  const { busy, task } = tasks;
+  const { lectureId, reloadLecture } = workspace;
+
   return (
     <>
       <div className="toolbar">

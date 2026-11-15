@@ -7,34 +7,21 @@ import './study.css';
 import { PptExtract } from './PptExtract';
 import { VideoPpt } from './VideoPpt';
 import { AppearanceEditor, Wallpaper, chatStyle } from './Appearance';
-import {
-  defaultAppearanceState,
-  resolveAppearance,
-  type AppearanceState,
-} from '../../shared/appearance';
+import { resolveAppearance } from '../../shared/appearance';
 import { sortCoursesForNavigation } from '../../shared/course-groups';
 import { IdentityContext, IdentityEditor } from './Identity';
-import { defaultIdentity, type Identity } from '../../shared/identity';
 import { StudyIcon } from './StudyIcon';
 import { FileManager } from './FileManager';
 import { LecturePicker } from './LecturePicker';
 import { ZhiyunLogin } from './ZhiyunLogin';
 import { ZhiyunImporter } from './ZhiyunImporter';
-import { useEffect, useRef, useState } from 'react';
-import type {
-  ChatSession,
-  Course,
-  Detail,
-  LectureDetail,
-  Progress,
-  Settings,
-} from '../../shared/types';
+import { useEffect, useState } from 'react';
+import type { Detail } from '../../shared/types';
 import { milliseconds } from '../../shared/srt';
 import { invoke } from './ipc';
 import { NewCourse, NewLecture, AddTranscript, AddCourseware } from './CoursePanels';
 import { SettingsPanel } from './SettingsPanel';
 import { Materials } from './Materials';
-import { errorMessage } from '../../shared/errors';
 import { IconRail } from './IconRail';
 import { CourseSidebar } from './CourseSidebar';
 import { ChatThread } from './ChatThread';
@@ -44,100 +31,70 @@ import { PracticeTab } from './PracticeTab';
 import { Composer } from './Composer';
 import { SessionDraftDialog } from './SessionDraftDialog';
 import type { AppModal, LectureTab } from './app-state';
+import { useTaskRunner } from './useTaskRunner';
+import { useChatStream } from './useChatStream';
+import { usePersonalization } from './usePersonalization';
+import { useSettings } from './useSettings';
+import { useCourseWorkspace } from './useCourseWorkspace';
 export default function App() {
   const [sessionDraft, setSessionDraft] = useState<{
     detail: Detail;
     lectureId: string;
   } | null>(null);
-  const [sessions, setSessions] = useState<ChatSession[]>([]),
-    [sessionId, setSessionId] = useState('');
-  const selectedSessions = useRef<Record<string, string>>({});
-  const [appearance, setAppearance] = useState<AppearanceState>(defaultAppearanceState);
-  const [identity, setIdentity] = useState<Identity>(defaultIdentity);
-  const [courses, setCourses] = useState<Course[]>([]),
-    [courseId, setCourseId] = useState(''),
-    [detail, setDetail] = useState<Detail | null>(null);
-  const [lectureId, setLectureId] = useState(''),
-    [lecture, setLecture] = useState<LectureDetail | null>(null),
-    [tab, setTab] = useState<LectureTab>('chat');
-  const [settings, setSettings] = useState<Settings | null>(null),
+  const [tab, setTab] = useState<LectureTab>('chat'),
     [modal, setModal] = useState<AppModal | null>(null);
   const [resourceUrl, setResourceUrl] = useState<string | undefined>();
-  const [error, setError] = useState(''),
-    [busy, setBusy] = useState(false),
-    [progress, setProgress] = useState<Progress | null>(null);
   const [search, setSearch] = useState(''),
-    [srtEdit, setSrtEdit] = useState<string | null>(null),
-    [input, setInput] = useState(''),
-    [chatText, setChatText] = useState(''),
-    [pendingChat, setPendingChat] = useState('');
+    [srtEdit, setSrtEdit] = useState<string | null>(null);
   const [sourceDraft, setSourceDraft] = useState(''),
     [pptDraft, setPptDraft] = useState('');
   const [withSearch, setWithSearch] = useState(false),
     [settingsApi, setSettingsApi] = useState(true),
-    [menu, setMenu] = useState(false),
-    [activities, setActivities] = useState<
-      Array<
-        Progress & {
-          at: string;
-        }
-      >
-    >([]);
-  const threadEnd = useRef<HTMLDivElement>(null),
-    importedLecture = useRef(''),
-    current = useRef({ courseId: '', lectureId: '', sessionId: '' }),
-    request = useRef(''),
-    operation = useRef(false);
-  current.current = { courseId, lectureId, sessionId };
-  async function reloadCourse(id = courseId) {
-    const result = await invoke('course:detail', { id });
-    if (current.current.courseId === id) {
-      setDetail(result);
-      setSessions((v) => [...v.filter((s) => s.course_id !== id), ...result.sessions]);
-    }
-    return result;
-  }
-  async function reloadLecture(id = lectureId) {
-    const result = await invoke('lecture:detail', { id });
-    if (current.current.lectureId === id) setLecture(result);
-    return result;
-  }
-  async function task(fn: () => Promise<unknown>) {
-    if (operation.current) return false;
-    operation.current = true;
-    setBusy(true);
-    setError('');
-    setProgress(null);
-    try {
-      await fn();
-      setActivities((a) => [
-        ...a,
-        { stage: '完成', message: '操作已完成', at: new Date().toLocaleTimeString() },
-      ]);
-      return true;
-    } catch (e) {
-      const message = errorMessage(e);
-      setError(message);
-      setActivities((a) => [
-        ...a,
-        { stage: '失败', message, error: true, at: new Date().toLocaleTimeString() },
-      ]);
-      return false;
-    } finally {
-      operation.current = false;
-      setBusy(false);
-    }
-  }
-  useEffect(() => {
-    void invoke('appearance:get')
-      .then(setAppearance)
-      .catch((e) => setError(String(e)));
-  }, []);
-  useEffect(() => {
-    void invoke('identity:get')
-      .then(setIdentity)
-      .catch((e) => setError(String(e)));
-  }, []);
+    [menu, setMenu] = useState(false);
+
+  const tasks = useTaskRunner();
+  const { error, setError, busy, progress, setProgress, activities, setActivities, task } = tasks;
+  const chat = useChatStream();
+  const { setInput, chatText, setChatText, pendingChat, setPendingChat, request, threadEnd } = chat;
+  const { appearance, setAppearance, identity, setIdentity } = usePersonalization(setError);
+  const { settings, setSettings } = useSettings();
+  const workspace = useCourseWorkspace({
+    onError: setError,
+    // What belonged to the previous course or lecture is cleared the moment the selection changes.
+    onCourseChange: () => {
+      setProgress(null);
+      setSrtEdit(null);
+      setChatText('');
+      setPendingChat('');
+      setActivities([]);
+      setSourceDraft('');
+      setMenu(false);
+      request.current = '';
+    },
+    onLectureChange: () => {
+      setSrtEdit(null);
+      setProgress(null);
+    },
+  });
+  const {
+    courses,
+    setCourses,
+    courseId,
+    setCourseId,
+    detail,
+    setSessions,
+    sessionId,
+    lectureId,
+    setLectureId,
+    lecture,
+    setLecture,
+    importedLecture,
+    current,
+    reloadCourse,
+    reloadLecture,
+  } = workspace;
+
+  // Start-up: load the course list, settings and sessions together, and listen for progress and chat events.
   useEffect(() => {
     void Promise.all([invoke('courses'), invoke('settings:get'), invoke('sessions')])
       .then(([c, s, cs]) => {
@@ -166,50 +123,8 @@ export default function App() {
     });
   }, []);
   useEffect(() => {
-    document.documentElement.dataset.theme = settings?.theme || 'light';
-  }, [settings?.theme]);
-  useEffect(() => {
-    setDetail(null);
-    setSessionId('');
-    setLecture(null);
-    setLectureId('');
-    setProgress(null);
-    setSrtEdit(null);
-    setChatText('');
-    setPendingChat('');
-    setActivities([]);
-    setSourceDraft('');
-    setMenu(false);
-    request.current = '';
-    if (courseId)
-      void invoke('course:detail', { id: courseId })
-        .then((d) => {
-          if (current.current.courseId === courseId) {
-            setDetail(d);
-            setSessions((v) => [...v.filter((s) => s.course_id !== courseId), ...d.sessions]);
-            setSessionId(selectedSessions.current[courseId] || d.sessions[0]?.id || '');
-            setLectureId(
-              importedLecture.current ||
-                d.sessions.find(
-                  (s) => s.id === (selectedSessions.current[courseId] || d.sessions[0]?.id),
-                )?.lecture_id ||
-                d.lectures[0]?.id ||
-                '',
-            );
-            importedLecture.current = '';
-          }
-        })
-        .catch((e) => setError(String(e)));
-  }, [courseId]);
-  useEffect(() => {
     threadEnd.current?.scrollIntoView({ block: 'end' });
-  }, [pendingChat, chatText, detail?.messages.length, tab]);
-  useEffect(() => {
-    setLecture(null);
-    setSrtEdit(null);
-    setProgress(null);
-    if (lectureId) void reloadLecture(lectureId).catch((e) => setError(String(e)));
-  }, [lectureId]);
+  }, [threadEnd, pendingChat, chatText, detail?.messages.length, tab]);
   function jump(timestamp: string | number) {
     const stamp = typeof timestamp === 'number' ? timestamp : milliseconds(timestamp);
     setTab('subtitles');
@@ -323,16 +238,10 @@ export default function App() {
         />
         {sessionDraft && (
           <SessionDraftDialog
-            busy={busy}
+            tasks={tasks}
             setSessionDraft={setSessionDraft}
             sessionDraft={sessionDraft}
-            task={task}
-            setSessions={setSessions}
-            selectedSessions={selectedSessions}
-            setCourseId={setCourseId}
-            setSessionId={setSessionId}
-            courseId={courseId}
-            setLectureId={setLectureId}
+            workspace={workspace}
             setTab={setTab}
             setInput={setInput}
           />
@@ -408,29 +317,11 @@ export default function App() {
         <IconRail modal={modal} setModal={setModal} setSettingsApi={setSettingsApi} />
         <CourseSidebar
           setModal={setModal}
-          courses={courses}
-          courseId={courseId}
-          busy={busy}
-          sessions={sessions}
-          sessionId={sessionId}
-          task={task}
-          setSessions={setSessions}
-          selectedSessions={selectedSessions}
-          setSessionId={setSessionId}
-          setInput={setInput}
-          setChatText={setChatText}
-          setPendingChat={setPendingChat}
-          request={request}
-          reloadCourse={reloadCourse}
-          setCourseId={setCourseId}
-          setLectureId={setLectureId}
+          workspace={workspace}
+          tasks={tasks}
+          chat={chat}
           setTab={setTab}
           setSessionDraft={setSessionDraft}
-          lectureId={lectureId}
-          setError={setError}
-          setCourses={setCourses}
-          setDetail={setDetail}
-          setLecture={setLecture}
           settings={settings}
           setSettings={setSettings}
         />
@@ -539,13 +430,10 @@ export default function App() {
                   <ChatThread
                     detail={detail}
                     sessionId={sessionId}
-                    pendingChat={pendingChat}
-                    chatText={chatText}
+                    chat={chat}
                     lecture={lecture}
-                    setInput={setInput}
                     setModal={setModal}
                     setSourceDraft={setSourceDraft}
-                    threadEnd={threadEnd}
                   />
                 )}
                 {tab === 'activity' && (
@@ -617,12 +505,10 @@ export default function App() {
                       <div className="tab-content">
                         {tab === 'subtitles' && (
                           <SubtitlesTab
-                            busy={busy}
+                            tasks={tasks}
                             lecture={lecture}
-                            task={task}
                             generate={generate}
-                            lectureId={lectureId}
-                            reloadLecture={reloadLecture}
+                            workspace={workspace}
                             setSrtEdit={setSrtEdit}
                             srtEdit={srtEdit}
                             exportResult={exportResult}
@@ -633,27 +519,23 @@ export default function App() {
                         )}
                         {tab === 'notes' && (
                           <NotesTab
-                            busy={busy}
+                            tasks={tasks}
                             lecture={lecture}
-                            task={task}
                             generate={generate}
                             exportResult={exportResult}
                             jump={jump}
-                            lectureId={lectureId}
-                            reloadLecture={reloadLecture}
+                            workspace={workspace}
                           />
                         )}
                         {tab === 'practice' && (
                           <PracticeTab
-                            busy={busy}
+                            tasks={tasks}
                             lecture={lecture}
-                            task={task}
                             generate={generate}
                             exportResult={exportResult}
                             withSearch={withSearch}
                             setWithSearch={setWithSearch}
-                            lectureId={lectureId}
-                            reloadLecture={reloadLecture}
+                            workspace={workspace}
                           />
                         )}
                       </div>
@@ -661,21 +543,11 @@ export default function App() {
                   ))}
               </div>
               <Composer
-                pendingChat={pendingChat}
-                chatText={chatText}
-                sessionId={sessionId}
-                input={input}
-                courseId={courseId}
-                lectureId={lectureId}
+                chat={chat}
+                workspace={workspace}
                 setTab={setTab}
-                task={task}
-                request={request}
-                setChatText={setChatText}
-                setPendingChat={setPendingChat}
-                setInput={setInput}
-                reloadCourse={reloadCourse}
+                tasks={tasks}
                 sourceDraft={sourceDraft}
-                busy={busy}
                 setModal={setModal}
                 setSourceDraft={setSourceDraft}
                 menu={menu}

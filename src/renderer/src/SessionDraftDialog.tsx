@@ -1,37 +1,31 @@
-import type { Detail, ChatSession } from '../../shared/types';
+import type { Detail } from '../../shared/types';
 import { invoke } from './ipc';
 import { Modal } from './UiParts';
 import type { SetLectureTab } from './app-state';
+import type { TaskRunner } from './useTaskRunner';
+import type { CourseWorkspace } from './useCourseWorkspace';
 
 export function SessionDraftDialog({
-  busy,
   setSessionDraft,
   sessionDraft,
-  task,
-  setSessions,
-  selectedSessions,
-  setCourseId,
-  setSessionId,
-  courseId,
-  setLectureId,
   setTab,
   setInput,
+  tasks,
+  workspace,
 }: {
-  busy: boolean;
   setSessionDraft: React.Dispatch<
     React.SetStateAction<{ detail: Detail; lectureId: string } | null>
   >;
   sessionDraft: { detail: Detail; lectureId: string };
-  task: (fn: () => Promise<unknown>) => Promise<boolean>;
-  setSessions: React.Dispatch<React.SetStateAction<ChatSession[]>>;
-  selectedSessions: React.RefObject<Record<string, string>>;
-  setCourseId: React.Dispatch<React.SetStateAction<string>>;
-  setSessionId: React.Dispatch<React.SetStateAction<string>>;
-  courseId: string;
-  setLectureId: React.Dispatch<React.SetStateAction<string>>;
   setTab: SetLectureTab;
   setInput: React.Dispatch<React.SetStateAction<string>>;
+  tasks: TaskRunner;
+  workspace: CourseWorkspace;
 }) {
+  const { busy, task } = tasks;
+  const { setSessions, selectedSessions, setCourseId, setSessionId, courseId, setLectureId } =
+    workspace;
+
   return (
     <Modal
       title="新建会话"

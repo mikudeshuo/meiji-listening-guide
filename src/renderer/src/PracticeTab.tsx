@@ -2,30 +2,31 @@ import type { LectureDetail } from '../../shared/types';
 import { invoke } from './ipc';
 import { PracticePanel } from './PracticePanel';
 import { StudyIcon } from './StudyIcon';
+import type { TaskRunner } from './useTaskRunner';
+import type { CourseWorkspace } from './useCourseWorkspace';
 
 export function PracticeTab({
-  busy,
   lecture,
-  task,
   generate,
   exportResult,
   withSearch,
   setWithSearch,
-  lectureId,
-  reloadLecture,
+  tasks,
+  workspace,
 }: {
-  busy: boolean;
   lecture: LectureDetail;
-  task: (fn: () => Promise<unknown>) => Promise<boolean>;
   generate: (
     action: 'subtitles:generate' | 'notes:generate' | 'practice:generate' | 'practice:prepare',
   ) => Promise<void>;
   exportResult: (kind: string, format: string) => undefined;
   withSearch: boolean;
   setWithSearch: React.Dispatch<React.SetStateAction<boolean>>;
-  lectureId: string;
-  reloadLecture: (id?: string) => Promise<LectureDetail>;
+  tasks: TaskRunner;
+  workspace: CourseWorkspace;
 }) {
+  const { busy, task } = tasks;
+  const { lectureId, reloadLecture } = workspace;
+
   return (
     <>
       <div className="toolbar">

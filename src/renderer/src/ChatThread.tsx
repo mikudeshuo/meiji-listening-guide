@@ -2,28 +2,25 @@ import type { Detail, LectureDetail } from '../../shared/types';
 import { ChatMessage } from './ChatMessage';
 import { Markdown } from './UiParts';
 import type { SetAppModal } from './app-state';
+import type { ChatStream } from './useChatStream';
 
 export function ChatThread({
   detail,
   sessionId,
-  pendingChat,
-  chatText,
   lecture,
-  setInput,
   setModal,
   setSourceDraft,
-  threadEnd,
+  chat,
 }: {
   detail: Detail | null;
   sessionId: string;
-  pendingChat: string;
-  chatText: string;
   lecture: LectureDetail | null;
-  setInput: React.Dispatch<React.SetStateAction<string>>;
   setModal: SetAppModal;
   setSourceDraft: React.Dispatch<React.SetStateAction<string>>;
-  threadEnd: React.RefObject<HTMLDivElement | null>;
+  chat: ChatStream;
 }) {
+  const { pendingChat, chatText, setInput, threadEnd } = chat;
+
   return (
     <div className="agent-thread">
       {!detail?.messages.filter((m) => m.session_id === sessionId).length &&
