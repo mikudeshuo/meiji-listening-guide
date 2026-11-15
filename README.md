@@ -20,8 +20,12 @@ resources 只包含独立 ONNX 模型、Codex 连接组件、NapCat Node 组件�
 
 ```powershell
 npm run typecheck
+npm run format:check
+npm run lint
 node scripts/audit-language-migration.mts --check
 ```
+
+源码统一用 Prettier 排版（配置在 package.json 的 prettier 字段），提交前运行 npm run format。ESLint 规则见 eslint.config.mjs；现存告警尚未清零，lint 目前用于查看问题而不是阻断构建。
 
 当前版本按用户要求删除测试脚本、测试配置和测试启动入口。此前的验收记录仍保留；历史验收不代表全部真实账号和外部站点可用。
 
@@ -47,8 +51,9 @@ portable 为完整目录，full 为完整安装包，lite 为不含可选离线�
 | src/renderer、src/preload | React 页面和最小隔离桥接 |
 | src/shared | 类型、协议和验证规则 |
 | scripts/*.mts | 当前构建、组件恢复、模型维护及验收入口 |
-| scripts/*.ts | 保留的 TypeScript 课程维护工具，需按各脚本范围使用，不能当作自动任务批量执行 |
+| scripts/course-maintenance/*.ts | 保留的一次性 TypeScript 课程维护工具，需按各脚本范围使用，不能当作自动任务批量执行；不随源码包和公开仓库发布 |
 | resources | 原生运行组件及离线模型，不含 Python 或 yt-dlp |
+| 开发记录 | 历次迁移、整改的进度文档与验收/清理记录，仅本机保留，不发布 |
 | 历史参考 | 迁移前源码及一次性旧维护脚本的压缩归档，不能作为应用运行入口 |
 
 out 中的 JavaScript 是 TypeScript 的编译产物；第三方 npm 包、WASM、DLL、FFmpeg、Electron、Codex 和模型并非本项目自写语言迁移对象。HTML 是 React 的挂载入口，CSS 是界面样式。

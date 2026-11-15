@@ -19,7 +19,14 @@
     "release:lite": "node scripts/release.mts lite",
     "release:components": "node scripts/release.mts components",
     "audit:typescript": "node scripts/audit-typescript.mts --check",
-    "release:source": "node scripts/source-package.mts"
+    "release:source": "node scripts/source-package.mts",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.{ts,mts}\" electron.vite.config.ts eslint.config.mjs",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"scripts/**/*.{ts,mts}\" electron.vite.config.ts eslint.config.mjs",
+    "lint": "eslint src scripts"
+  },
+  "prettier": {
+    "singleQuote": true,
+    "printWidth": 100
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.1",
@@ -50,6 +57,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^24.10.0",
     "@types/react": "^19.2.0",
@@ -59,10 +67,12 @@
     "electron-builder": "^26.0.12",
     "electron-vite": "^4.0.1",
     "esbuild": "0.25.12",
-    "playwright": "^1.63.0",
+    "eslint": "10.15.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "prettier": "3.10.1",
     "typescript": "^5.9.3",
-    "vite": "^7.2.0",
-    "vitest": "5.0.3"
+    "typescript-eslint": "8.72.2",
+    "vite": "^7.2.0"
   },
   "build": {
     "appId": "org.listening-assistant.desktop",
