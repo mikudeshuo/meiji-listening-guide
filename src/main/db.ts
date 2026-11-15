@@ -16,11 +16,60 @@ import type {
   Segment,
 } from '../shared/types';
 import { toSrt } from '../shared/srt';
+function addColumn(db: Database.Database, table: string, name: string, definition: string) {
+  const columns = db.pragma(`table_info(${table})`) as { name: string }[];
+  if (!columns.some((column) => column.name === name))
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${definition}`);
+}
+
+/**
+ * Schema changes since the first release, in order. A database's `user_version` is how many
+ * of them it already has, so each runs once. To change the schema, append a step here —
+ * never edit an existing one, because databases in use have already run it.
+ */
+const migrations: ((db: Database.Database) => void)[] = [
+  // 1. Columns added before versions were recorded. A database from that period may have
+  //    all, some or none of them, so each one is added only if it is missing.
+  (db) => {
+    addColumn(db, 'lectures', 'source_video_path', "TEXT NOT NULL DEFAULT ''");
+    addColumn(db, 'lectures', 'transcript_path', "TEXT NOT NULL DEFAULT ''");
+    addColumn(db, 'lectures', 'transcript_text', "TEXT NOT NULL DEFAULT ''");
+    addColumn(db, 'lectures', 'time_estimated', 'INTEGER NOT NULL DEFAULT 0');
+    addColumn(db, 'lectures', 'ppt_processed', 'INTEGER NOT NULL DEFAULT 0');
+    addColumn(db, 'chat_sessions', 'lecture_id', 'TEXT REFERENCES lectures(id) ON DELETE SET NULL');
+    addColumn(db, 'messages', 'session_id', 'TEXT REFERENCES chat_sessions(id) ON DELETE CASCADE');
+  },
+];
+
+/** How many migrations a database has already had. Refuses one written by a later version of the program. */
+function schemaVersion(db: Database.Database) {
+  const applied = db.pragma('user_version', { simple: true }) as number;
+  if (applied > migrations.length)
+    throw new Error('课程数据库由更新版本的程序创建，请使用新版本程序打开');
+  return applied;
+}
+
+function migrate(db: Database.Database, applied: number) {
+  for (let version = applied; version < migrations.length; version++)
+    db.transaction(() => {
+      migrations[version](db);
+      db.pragma(`user_version = ${version + 1}`);
+    })();
+}
+
 export class Store {
   db: Database.Database;
   constructor(public root: string) {
     mkdirSync(root, { recursive: true });
     this.db = new Database(join(root, 'assistant.db'));
+    // Checked before anything is written, so a database from a later version is left exactly as it was.
+    let applied: number;
+    try {
+      applied = schemaVersion(this.db);
+    } catch (error) {
+      this.db.close();
+      throw error;
+    }
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('synchronous = FULL');
     this.db.pragma('foreign_keys = ON');
@@ -37,39 +86,15 @@ export class Store {
       CREATE TABLE IF NOT EXISTS messages(id TEXT PRIMARY KEY,course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,lecture_id TEXT REFERENCES lectures(id) ON DELETE CASCADE,role TEXT,content TEXT,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
       CREATE TABLE IF NOT EXISTS chat_sessions(id TEXT PRIMARY KEY,course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,title TEXT NOT NULL,created_at TEXT DEFAULT CURRENT_TIMESTAMP);
     `);
-    if (
-      !(this.db.pragma('table_info(lectures)') as { name: string }[]).some(
-        (c) => c.name === 'source_video_path',
-      )
-    )
-      this.db.exec("ALTER TABLE lectures ADD COLUMN source_video_path TEXT NOT NULL DEFAULT ''");
-    for (const [name, type] of [
-      ['transcript_path', "TEXT NOT NULL DEFAULT ''"],
-      ['transcript_text', "TEXT NOT NULL DEFAULT ''"],
-      ['time_estimated', 'INTEGER NOT NULL DEFAULT 0'],
-      ['ppt_processed', 'INTEGER NOT NULL DEFAULT 0'],
-    ])
-      if (
-        !(this.db.pragma('table_info(lectures)') as { name: string }[]).some((c) => c.name === name)
-      )
-        this.db.exec(`ALTER TABLE lectures ADD COLUMN ${name} ${type}`);
-    if (
-      !(this.db.pragma('table_info(chat_sessions)') as { name: string }[]).some(
-        (c) => c.name === 'lecture_id',
-      )
-    )
-      this.db.exec(
-        'ALTER TABLE chat_sessions ADD COLUMN lecture_id TEXT REFERENCES lectures(id) ON DELETE SET NULL',
-      );
+    migrate(this.db, applied);
+    this.repairSessions();
+  }
+  /**
+   * Runs on every start, not once: makes sure each course has a session, attaches messages
+   * that have none to the course's first session, and gives placeholder sessions a real name.
+   */
+  private repairSessions() {
     this.db.transaction(() => {
-      if (
-        !(this.db.pragma('table_info(messages)') as { name: string }[]).some(
-          (c) => c.name === 'session_id',
-        )
-      )
-        this.db.exec(
-          'ALTER TABLE messages ADD COLUMN session_id TEXT REFERENCES chat_sessions(id) ON DELETE CASCADE',
-        );
       for (const c of this.courses()) {
         const session = this.sessions(c.id)[0] || this.createSession(c.id);
         this.db
