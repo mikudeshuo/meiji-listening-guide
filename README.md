@@ -14,14 +14,20 @@ npm run dev
 npm run build
 ```
 
-resources 只包含独立 ONNX 模型、Codex 连接组件、NapCat Node 组件和 FFmpeg/FFprobe 及其许可证。它们是必要第三方资源，不能以 TypeScript 源码代替二进制或权重。源码包不含这些大型文件，需恢复同版本组件。PDF 由应用原生 TypeScript 库处理，不需要 Python。
+resources 只包含独立 ONNX 模型、Codex 连接组件和 FFmpeg/FFprobe 及其许可证。它们是必要第三方资源，不能以 TypeScript 源码代替二进制或权重。源码包不含这些大型文件，需恢复同版本组件。PDF 由应用原生 TypeScript 库处理，不需要 Python。
+
+0.1.85 之后的源码已移除通讯助手（QQ、微信）和研究工作流（研究 Agent、MCP、学习记录、我的笔记）。资料目录里已有的 im-connections.sqlite3、research-native.sqlite 等文件不再被读取，也不会被删除。运行组件的安装入口移到「设置 → 运行组件」。下次发布前需更新版本号和版本说明。
 
 ## 检查
 
 ```powershell
 npm run typecheck
+npm run format:check
+npm run lint
 node scripts/audit-language-migration.mts --check
 ```
+
+源码统一用 Prettier 排版（配置在 package.json 的 prettier 字段），提交前运行 npm run format。ESLint 规则见 eslint.config.mjs；现存告警尚未清零，lint 目前用于查看问题而不是阻断构建。
 
 当前版本按用户要求删除测试脚本、测试配置和测试启动入口。此前的验收记录仍保留；历史验收不代表全部真实账号和外部站点可用。
 
@@ -47,8 +53,9 @@ portable 为完整目录，full 为完整安装包，lite 为不含可选离线�
 | src/renderer、src/preload | React 页面和最小隔离桥接 |
 | src/shared | 类型、协议和验证规则 |
 | scripts/*.mts | 当前构建、组件恢复、模型维护及验收入口 |
-| scripts/*.ts | 保留的 TypeScript 课程维护工具，需按各脚本范围使用，不能当作自动任务批量执行 |
+| scripts/course-maintenance/*.ts | 保留的一次性 TypeScript 课程维护工具，需按各脚本范围使用，不能当作自动任务批量执行；不随源码包和公开仓库发布 |
 | resources | 原生运行组件及离线模型，不含 Python 或 yt-dlp |
+| 开发记录 | 历次迁移、整改的进度文档与验收/清理记录，仅本机保留，不发布 |
 | 历史参考 | 迁移前源码及一次性旧维护脚本的压缩归档，不能作为应用运行入口 |
 
 out 中的 JavaScript 是 TypeScript 的编译产物；第三方 npm 包、WASM、DLL、FFmpeg、Electron、Codex 和模型并非本项目自写语言迁移对象。HTML 是 React 的挂载入口，CSS 是界面样式。
@@ -59,7 +66,7 @@ out 中的 JavaScript 是 TypeScript 的编译产物；第三方 npm 包、WASM�
 
 站点登录档案只读取用户主动选择的 Netscape 文件，经 Windows 当前用户 DPAPI 加密保存；仅按 Cookie 域、路径、Secure 和有效期发往所选站点，不发给 CDN、SponsorBlock 或无关站点。界面仅显示档案名与站点，不显示凭据。下载任务可加密保存任务记录，但最终媒体和用户主动保留的来源文件本身不加密。
 
-旧 aria2c 任务设置会明确改用 TypeScript 原生并行分段；不调用 aria2c 或 yt-dlp。旧工作流仅查看和导出，须重新选择当前来源才能建立新任务，不能重放历史模型请求。教材批注需用户在应用内明确保存。
+旧 aria2c 任务设置会明确改用 TypeScript 原生并行分段；不调用 aria2c 或 yt-dlp。教材批注需用户在应用内明确保存。
 
 ## 清理和许可
 
