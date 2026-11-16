@@ -2,7 +2,7 @@
 
 [下载 Windows 程序和源码](https://github.com/mikudeshuo/meiji-listening-guide/releases/latest)。分享此链接即可；下载程序 ZIP 后完整解压，运行「梅酱的听课指南.exe」。公开包不包含个人课程、教材或账号。
 
-Windows x64 桌面应用。业务逻辑、前后端、独立工作进程及现行构建/维护入口使用 TypeScript；界面保持梅酱原有布局和主题。实际版本取 package.json，验收范围及适用边界见 docs/0.1.85版本说明.md。
+Windows x64 桌面应用。业务逻辑、前后端、独立工作进程及现行构建/维护入口使用 TypeScript；界面保持梅酱原有布局和主题。实际版本取 package.json，验收范围及适用边界见 docs/0.2.0版本说明.md。
 
 ## 开发
 
@@ -16,7 +16,7 @@ npm run build
 
 resources 只包含独立 ONNX 模型、Codex 连接组件和 FFmpeg/FFprobe 及其许可证。它们是必要第三方资源，不能以 TypeScript 源码代替二进制或权重。源码包不含这些大型文件，需恢复同版本组件。PDF 由应用原生 TypeScript 库处理，不需要 Python。
 
-0.1.85 之后的源码已移除通讯助手（QQ、微信）和研究工作流（研究 Agent、MCP、学习记录、我的笔记）。资料目录里已有的 im-connections.sqlite3、research-native.sqlite 等文件不再被读取，也不会被删除。运行组件的安装入口移到「设置 → 运行组件」。下次发布前需更新版本号和版本说明。
+0.2.0 起移除了通讯助手（QQ、微信）和研究工作流（研究 Agent、MCP、学习记录、我的笔记）。资料目录里已有的 im-connections.sqlite3、research-native.sqlite 等文件不再被读取，也不会被删除。运行组件的安装入口移到「设置 → 运行组件」。
 
 ## 检查
 

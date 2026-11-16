@@ -1,6 +1,6 @@
 {
   "name": "listening-assistant",
-  "version": "0.1.85",
+  "version": "0.2.0",
   "private": true,
   "description": "听课助手：课堂字幕、教师重点与课后练习",
   "author": "Listening Assistant contributors",

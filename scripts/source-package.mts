@@ -49,7 +49,7 @@ for (const name of [
   'docs/架构.md',
   'docs/验收与排障.md',
   'docs/后台协议.md',
-  'docs/0.1.85版本说明.md',
+  'docs/0.2.0版本说明.md',
 ])
   files.push(name);
 for (const path of files) zip.file(path, createReadStream(join(root, path)));
